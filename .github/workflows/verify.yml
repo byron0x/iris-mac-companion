@@ -7,6 +7,13 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify browser companion permissions and disclosure boundaries
+        run: node --test browser-extension/tests/*.test.mjs
+      - name: Package browser store submission
+        run: python3 browser-extension/package.py
       - name: Verify encryption and reversible cleanup with temporary fixtures
         run: swift run IRISCoreChecks
       - name: Build native application
