@@ -69,7 +69,7 @@ struct GuardianView: View {
             GroupBox {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("A more complete check").font(.headline)
-                    Text("Allow Full Disk Access once so IRIS can inspect protected startup locations. Your files stay on this Mac. The keyboard check works separately from this permission.").foregroundStyle(.secondary)
+                    Text("Allow Full Disk Access once so IRIS can inspect protected startup locations. Your files stay on this Mac. The keyboard check works separately from this permission.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     Button("Open Full Disk Access settings") { model.openFullDiskAccess() }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
             }
@@ -84,8 +84,8 @@ struct GuardianView: View {
                 ForEach(model.unresolved) { finding in
                     DisclosureGroup {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text(finding.explanation)
-                            ForEach(finding.evidence, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
+                            Text(finding.explanation).fixedSize(horizontal: false, vertical: true)
+                            ForEach(finding.evidence, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
                             Text(finding.location).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
                             Button(finding.action == .quarantine ? "Quarantine file" : finding.action == .disableStartup ? "Disable startup item" : finding.action == .settings ? "Review keyboard access" : "Show in Finder") { model.act(finding) }.disabled(model.busy)
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
@@ -102,7 +102,7 @@ struct GuardianView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Keyboard privacy", systemImage: "keyboard").font(.headline)
             Text(coverage.status == "unavailable" ? "This check could not finish. Try again." : coverage.activeApps == 0 && coverage.status == "checked" ? "No active keyboard listeners found in this check." : "\(coverage.activeApps) app\(coverage.activeApps == 1 ? " has" : "s have") active keyboard listeners\(coverage.status == "partial" ? " in this partial check" : "").")
-            Text("Shortcut and accessibility apps can need this access. Review anything you do not recognize below. IRIS never records what you type.").font(.caption).foregroundStyle(.secondary)
+            Text("Shortcut and accessibility apps can need this access. Review anything you do not recognize below. IRIS never records what you type.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button("Recheck keyboard access") { model.checkKeyboard() }.disabled(model.busy)
                 Button("Accessibility settings") { model.openAccessibilitySettings() }
