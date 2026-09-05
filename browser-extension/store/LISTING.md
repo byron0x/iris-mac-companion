@@ -1,6 +1,6 @@
 # IRIS browser companion store listing
 
-Status: submission preparation. No approved public listing yet.
+Status: submitted to Chrome Web Store review on September 5, 2026. Publication is staged for final store-install verification after approval. Extension ID: `aeamoplfjgalmokafhkcapgpbofinmfg`. No approved public listing yet.
 
 ## Name
 

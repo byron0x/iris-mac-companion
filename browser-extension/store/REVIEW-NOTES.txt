@@ -1,0 +1,15 @@
+No login, subscription, wallet or Mac app is required to test the browser companion. Use a test browser profile with a harmless extension installed.
+
+1. Install IRIS. Its review opens automatically; the toolbar icon reopens it. Review the reported permissions for the test extension. These are possible access, not a malware verdict.
+2. Choose Keep this extension, reload the review, and expand Other extensions. The choice remains. Choose Review again to return it to the review list.
+3. Choose Turn off for a non-managed test extension. Confirm any browser prompt. Under Other extensions, Restore extension re-enables supported unchanged extensions. Do not test with critical personal extensions.
+4. Optionally choose Connect to IRIS. The button explicitly discloses a 30-day connection for extension names and permission summaries. It opens https://app.undercoveriris.io/device, where the extension review appears without an IRIS login. Review in companion opens the trusted extension UI; the website cannot change extensions directly.
+5. Disconnect browser in the website, or Disconnect in the extension. Subsequent website report requests receive no inventory. The local companion continues working.
+
+Data disclosure: User activity refers to local review choices and supported undo records, alongside extension metadata used for this access review. The extension does not collect browsing history, page contents, copied text, keystrokes, passwords, wallet data or telemetry. Optional website reporting stays in the same browser and is not sent to an IRIS inventory server. The management and storage permissions are the only requested permissions; there are no host permissions, content scripts, remote code or native-messaging permission.
+
+The Mac companion section is a separate forthcoming application and is not required by this browser extension. The public website installation button remains unavailable until this listing is approved. The production web config is already linked to this exact extension ID: aeamoplfjgalmokafhkcapgpbofinmfg.
+
+Source: https://github.com/byron0x/iris-mac-companion/tree/main/browser-extension
+Privacy: https://app.undercoveriris.io/device-privacy
+Support: support@joinhans.io
