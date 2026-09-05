@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "IRIS — Your browser guardian companion",
+  "version": "0.1.0",
+  "description": "Understand extension access and turn off extensions you no longer need. Your review stays in this browser.",
+  "minimum_chrome_version": "120",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwmFPRWcTPGweeWoa73H66bNhYN5OAMikWr8ik9upGaKjGB1P07q6O/deHXgF/l0d3CQx8QidI46qx9s3sppb5FYCxDx6+XyhEMtidcPYHlnZCJoqrVxP7cQhwWaJlwqb99kRnuH+vB5ic95TyAjGCYCyL8s51WBrTn7U2IoHvSYEJrJegAPkT2uQtlBo5yld9TY9znTDRJrB0WoFD2xFApiG+wXlBU5IjRtkv9LYewagVlDoY+7cAwRqzjbnuSEezxtYPws8uVlJ34QPGtk26jf5HZaTdwI8AfLvLtbhkhf0G+VtXCf41ukdcDWIJ8hc5v584Wf4ueU/suuJRiN4FwIDAQAB",
+  "permissions": ["management", "storage"],
+  "background": {
+    "service_worker": "worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Review browser security with IRIS",
+    "default_icon": {
+      "16": "assets/iris-16.png",
+      "32": "assets/iris-32.png",
+      "128": "assets/iris-128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/iris-16.png",
+    "48": "assets/iris-48.png",
+    "128": "assets/iris-128.png"
+  },
+  "options_page": "review.html",
+  "externally_connectable": {
+    "matches": ["https://app.undercoveriris.io/*"]
+  },
+  "incognito": "not_allowed",
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+  },
+  "short_name": "IRIS Companion"
+}

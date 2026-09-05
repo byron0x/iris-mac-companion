@@ -5,7 +5,7 @@ import IRISCore
 @main struct IRISCompanionApp: App {
     @StateObject private var model = CompanionModel()
     var body: some Scene {
-        WindowGroup("IRIS · Your Mac guardian") { GuardianView(model: model).onOpenURL { model.connect($0) } }
+        WindowGroup("IRIS · Your Mac guardian companion") { GuardianView(model: model).onOpenURL { model.connect($0) } }
             .defaultSize(width: 1000, height: 780)
         MenuBarExtra("IRIS", systemImage: "shield.lefthalf.filled") {
             Button("Open IRIS") { NSApp.activate(ignoringOtherApps: true); NSApp.windows.first?.makeKeyAndOrderFront(nil) }
@@ -25,7 +25,7 @@ struct GuardianView: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 24) {
                 HStack { brandImage; Text("IRIS").font(.system(size: 30, weight: .bold, design: .rounded)) }
-                Text("YOUR MAC GUARDIAN").font(.caption).tracking(2).foregroundStyle(.secondary)
+                Text("YOUR MAC GUARDIAN COMPANION").font(.caption).tracking(2).foregroundStyle(.secondary)
                 ForEach(["Review", "Quarantine", "About"], id: \.self) { value in Button { section = value } label: { Label(value, systemImage: value == "Review" ? "checkmark.shield" : value == "Quarantine" ? "archivebox" : "info.circle").frame(maxWidth: .infinity, alignment: .leading).padding(12).background(section == value ? violet.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 12)) }.buttonStyle(.plain) }
                 Spacer()
                 Link(destination: URL(string: "https://joinhans.io")!) {

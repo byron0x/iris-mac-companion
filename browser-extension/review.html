@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Browser security · IRIS</title>
+    <link rel="stylesheet" href="review.css" />
+    <script type="module" src="review.js"></script>
+  </head>
+  <body>
+    <header>
+      <a href="review.html" class="brand"
+        ><img src="assets/iris-128.png" alt="" width="44" height="44" /><strong
+          >IRIS</strong
+        ><span>Your browser guardian companion</span></a
+      ><a
+        class="hans"
+        href="https://joinhans.io"
+        target="_blank"
+        rel="noopener noreferrer"
+        ><span>powered by</span
+        ><img src="assets/hans.png" alt="" width="28" height="28" /><strong
+          >HANS Society</strong
+        ></a
+      >
+    </header>
+    <main>
+      <section class="hero">
+        <span class="eyebrow">YOUR BROWSER, MORE IN CONTROL</span>
+        <h1>Less access.<br /><em>Less to worry about.</em></h1>
+        <p>
+          Keep the extensions you need. Turn off the ones you don’t. IRIS
+          explains their access and remembers what you’ve reviewed.
+        </p>
+        <div class="trust">
+          <span>Local review</span><span>No browsing history collected</span
+          ><span>Changes you can undo</span>
+        </div>
+      </section>
+      <div id="message" role="status" aria-live="polite" hidden></div>
+
+      <section class="review">
+        <div class="section-title">
+          <div>
+            <span class="eyebrow">A FEW USEFUL NEXT STEPS</span>
+            <h2>Your extension review</h2>
+          </div>
+          <button id="refresh" class="quiet">Refresh review</button>
+        </div>
+        <p id="summary" aria-live="polite">
+          Checking your installed extensions…
+        </p>
+        <p class="muted">
+          Broad permissions can be useful for tools you trust, including
+          password managers and wallets. Review the purpose before turning one
+          off.
+        </p>
+        <div id="findings"></div>
+      </section>
+      <section class="connection">
+        <div>
+          <h2 id="connection-title">Bring this review into IRIS</h2>
+          <p id="connection-copy">
+            Connect once to share extension names and permission summaries with
+            app.undercoveriris.io in this browser for 30 days. No separate login
+            is needed.
+          </p>
+        </div>
+        <button id="connect" class="primary">Connect to IRIS ↗</button
+        ><button id="disconnect" class="quiet" hidden>Disconnect</button>
+      </section>
+      <details class="privacy">
+        <summary>Privacy, permissions and what this check covers</summary>
+        <p>
+          IRIS uses the browser’s management permission to list extensions and
+          perform changes you choose here. Storage remembers your review
+          choices, reversible changes and optional web connection in this
+          browser profile.
+        </p>
+        <p>
+          IRIS does not read page contents, browsing history, clipboard text,
+          passwords or wallet secrets. It has no website access permissions and
+          uploads no scan data to an IRIS server. When connected, the IRIS
+          website can read this browser’s extension report directly. Anyone
+          using this browser profile can open its local review. Disconnect to
+          stop sharing with the website.
+        </p>
+        <p>
+          The report reflects permissions reported by your browser. Site
+          restrictions may narrow access. This is an access review, not a
+          malware verdict. Individual site access can be changed in your
+          browser’s extension settings.
+        </p>
+        <button id="clear" class="quiet">Forget saved review choices</button>
+      </details>
+      <footer>
+        <p>
+          IRIS · HANS Society Foundation ·
+          <a href="mailto:support@joinhans.io">support@joinhans.io</a>
+        </p>
+        <p>
+          <a
+            href="https://github.com/byron0x/iris-mac-companion/tree/main/browser-extension"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Open-source software · GPLv3 ↗</a
+          >
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

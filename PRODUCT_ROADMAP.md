@@ -28,7 +28,7 @@ This is development source, not a signed public download. Developer ID signing, 
 
 | Priority | User-facing feature | Source / implementation | Work still needed |
 | --- | --- | --- | --- |
-| 1 | Browser access review for Chrome, Brave and Edge | IRIS Manifest V3 extension using the browser management/permissions APIs; Objective-See does not supply a browser extension | Build extension, permission explanations, reversible disable/restore, stable store identity and authenticated connection. Validate each target browser. |
+| 1 | Browser access review for Chrome, Brave and Edge | Built in `browser-extension/`: local permission review, scoped Keep choices, disable/restore and optional direct web connection | Store registration, publisher verification, store-issued identity, submission and target-browser release validation. Native messaging remains separate planned work. |
 | 2 | Camera and microphone awareness | Evaluate OverSight, GPLv3 | Adapt monitoring and process attribution; verify supported macOS versions and permission behavior. Unknown process attribution must remain unknown. No audio/video capture. |
 | 3 | New startup protection and fake-verification/paste defenses | Evaluate BlockBlock, GPLv3 | Apple Endpoint Security entitlement, signed privileged component, permission onboarding, rule identity and recovery. Paste protection needs separate Accessibility consent and a carefully bounded design. |
 | 4 | App network privacy | Evaluate LuLu, GPLv3 | IRIS-owned Network Extension/System Extension provisioning, filter approval, destination explanation, reversible rules and connectivity recovery. Must not strand a user offline. |
