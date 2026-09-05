@@ -1,0 +1,13 @@
+name: Verify Mac companion
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  mac:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify encryption and reversible cleanup with temporary fixtures
+        run: swift run IRISCoreChecks
+      - name: Build native application
+        run: swift build --product IRISCompanion
