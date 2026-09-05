@@ -27,7 +27,17 @@ struct GuardianView: View {
                 Text("YOUR MAC GUARDIAN").font(.caption).tracking(2).foregroundStyle(.secondary)
                 ForEach(["Review", "Quarantine", "About"], id: \.self) { value in Button { section = value } label: { Label(value, systemImage: value == "Review" ? "checkmark.shield" : value == "Quarantine" ? "archivebox" : "info.circle").frame(maxWidth: .infinity, alignment: .leading).padding(12).background(section == value ? violet.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 12)) }.buttonStyle(.plain) }
                 Spacer()
-                Text("powered by HANS Society").font(.caption).foregroundStyle(.secondary)
+                Link(destination: URL(string: "https://joinhans.io")!) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("powered by").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            if let url = Bundle.main.url(forResource: "HANSIcon", withExtension: "png"), let icon = NSImage(contentsOf: url) {
+                                Image(nsImage: icon).resizable().frame(width: 28, height: 28).accessibilityHidden(true)
+                            }
+                            Text("HANS Society").font(.system(size: 13, weight: .semibold)).foregroundStyle(.primary)
+                        }
+                    }
+                }.buttonStyle(.plain).accessibilityLabel("Powered by HANS Society. Open HANS website")
                 Button("Open web dashboard ↗") { model.openWeb() }.buttonStyle(.plain).foregroundStyle(violet)
             }.padding(24).frame(width: 220).background(Color(red: 0.065, green: 0.05, blue: 0.09))
             ScrollView {
@@ -59,34 +69,49 @@ struct GuardianView: View {
             GroupBox {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("A more complete check").font(.headline)
-                    Text("Allow Full Disk Access so IRIS can inspect protected startup locations. macOS requires you to approve this yourself. Your files stay on this Mac.").foregroundStyle(.secondary)
+                    Text("Allow Full Disk Access once so IRIS can inspect protected startup locations. Your files stay on this Mac. The keyboard check works separately from this permission.").foregroundStyle(.secondary)
                     Button("Open Full Disk Access settings") { model.openFullDiskAccess() }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
             }
             if let report = model.report {
+                if let keyboard = report.coverage.keyboard { keyboardCard(keyboard) }
                 HStack(spacing: 14) {
                     metric("Threat matches", model.unresolved.filter { $0.level == .threat }.count, .orange)
                     metric("To review", model.unresolved.filter { $0.level == .review }.count, violet)
                     metric("Other items", model.unresolved.filter { $0.level == .information }.count, .secondary)
                 }
-                Text("Startup check: \(report.coverage.inventory) · Malware check: \(report.coverage.malware)").font(.caption).foregroundStyle(.secondary)
+                Text("Startup check: \(coverageLabel(report.coverage.inventory)) · Malware check: \(coverageLabel(report.coverage.malware))").font(.caption).foregroundStyle(.secondary)
                 ForEach(model.unresolved) { finding in
                     DisclosureGroup {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(finding.explanation)
                             ForEach(finding.evidence, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
                             Text(finding.location).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-                            Button(finding.action == .quarantine ? "Quarantine file" : finding.action == .disableStartup ? "Disable startup item" : "Show in Finder") { model.act(finding) }.disabled(model.busy)
+                            Button(finding.action == .quarantine ? "Quarantine file" : finding.action == .disableStartup ? "Disable startup item" : finding.action == .settings ? "Review keyboard access" : "Show in Finder") { model.act(finding) }.disabled(model.busy)
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
                     } label: { Label(finding.title, systemImage: finding.level == .threat ? "exclamationmark.shield" : "app.badge").foregroundStyle(finding.level == .threat ? .orange : .primary) }.padding().background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 12))
                 }
                 DisclosureGroup("What this scan covers") { ForEach(report.coverage.limitations, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary).padding(.vertical, 4) } }
             } else {
-                Text("IRIS checks software that starts automatically and uses maintained malware definitions to scan common download locations. Review findings before changing unfamiliar software.").foregroundStyle(.secondary)
+                Text("One scan checks startup software, active keyboard listeners and common download locations for known threats. IRIS groups findings by app and puts the items needing attention first.").foregroundStyle(.secondary)
                 Text("First scan: scanner downloads and threat definitions may take a few minutes. Future scans reuse them.").font(.caption).foregroundStyle(.secondary)
             }
         }
     }
+    func keyboardCard(_ coverage: KeyboardCoverage) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Keyboard privacy", systemImage: "keyboard").font(.headline)
+            Text(coverage.status == "unavailable" ? "This check could not finish. Try again." : coverage.activeApps == 0 && coverage.status == "checked" ? "No active keyboard listeners found in this check." : "\(coverage.activeApps) app\(coverage.activeApps == 1 ? " has" : "s have") active keyboard listeners\(coverage.status == "partial" ? " in this partial check" : "").")
+            Text("Shortcut and accessibility apps can need this access. Review anything you do not recognize below. IRIS never records what you type.").font(.caption).foregroundStyle(.secondary)
+            HStack {
+                Button("Recheck keyboard access") { model.checkKeyboard() }.disabled(model.busy)
+                Button("Accessibility settings") { model.openAccessibilitySettings() }
+            }
+            Text("Updated \(ISO8601DateFormatter().date(from: coverage.checkedAt)?.formatted(date: .abbreviated, time: .shortened) ?? "recently")\(coverage.status == "partial" ? " · Partial check" : "")").font(.caption2).foregroundStyle(.secondary)
+            DisclosureGroup("What this check covers") { ForEach(coverage.limitations, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary).padding(.vertical, 4) } }
+        }.padding().frame(maxWidth: .infinity, alignment: .leading).background(violet.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+    }
+    func coverageLabel(_ value: String) -> String { value == "notStarted" ? "Not checked yet" : value == "complete" ? "Checked" : value.capitalized }
     func metric(_ title: String, _ count: Int, _ color: Color) -> some View { VStack(alignment: .leading) { Text("\(count)").font(.largeTitle).foregroundStyle(color); Text(title).font(.caption) }.frame(maxWidth: .infinity, alignment: .leading).padding().background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 12)) }
     var quarantine: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -101,8 +126,9 @@ struct GuardianView: View {
             Text("Built to be on your side.").font(.largeTitle)
             Text("IRIS Mac Companion is free, open-source software from HANS Society Foundation, licensed under GPLv3. Scanning happens locally. The web dashboard receives an encrypted report only after you connect it.")
             Link("Startup scanning: KnockKnock by Objective-See Foundation ↗", destination: URL(string: "https://objective-see.org/products/knockknock.html")!)
+            Link("Keyboard privacy: adapted from ReiKey by Objective-See Foundation ↗", destination: URL(string: "https://objective-see.org/products/reikey.html")!)
             Link("Known-threat scanning: ClamAV by Cisco Talos ↗", destination: URL(string: "https://www.clamav.net/")!)
-            Text("These independent projects provide the scanning tools; they do not endorse IRIS. IRIS uses verified upstream releases. KnockKnock is downloaded unchanged; ClamAV is bundled with adjusted library paths and its source is supplied with each release. VirusTotal is not contacted.").foregroundStyle(.secondary)
+            Text("These independent projects do not endorse IRIS. KnockKnock is downloaded unchanged; ClamAV is bundled with adjusted library paths and its source is supplied with each release. IRIS adapts ReiKey's event-tap enumeration into a local, on-demand keyboard review. VirusTotal is not contacted.").foregroundStyle(.secondary)
             Link("Source code and licenses ↗", destination: URL(string: "https://github.com/byron0x/iris-mac-companion")!)
             Link("Privacy and connection details ↗", destination: URL(string: "https://app.undercoveriris.io/device-privacy")!)
             Link("Help: support@joinhans.io", destination: URL(string: "mailto:support@joinhans.io")!)

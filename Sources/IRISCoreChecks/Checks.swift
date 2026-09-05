@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import IRISCore
+import CoreGraphics
 
 final class CoreChecks {
     var cleanups: [() -> Void] = []
@@ -88,6 +89,52 @@ final class CoreChecks {
         runner.resetCancellation()
         try checkEqual(try runner.run(URL(fileURLWithPath: "/usr/bin/true"), []).status, 0)
     }
+    func testKeyboardReviewGroupsAppsWithoutCallingListenersMalware() throws {
+        let keyDown = UInt64(1) << CGEventType.keyDown.rawValue
+        try checkTrue(KeyboardReview.isKeyboardTap(enabled: true, events: keyDown))
+        try checkTrue(KeyboardReview.isKeyboardTap(enabled: true, events: UInt64(1) << CGEventType.keyUp.rawValue))
+        try checkFalse(KeyboardReview.isKeyboardTap(enabled: false, events: keyDown))
+        try checkFalse(KeyboardReview.isKeyboardTap(enabled: true, events: UInt64(1) << CGEventType.mouseMoved.rawValue))
+        let snapshot = KeyboardReview.make([
+            KeyboardListener(processID: 1, path: "/Users/fixture/Tools/Shortcuts.app", name: "Shortcuts"),
+            KeyboardListener(processID: 2, path: "/Users/fixture/Tools/Shortcuts.app", name: "Shortcuts", canFilter: true),
+            KeyboardListener(processID: 3, path: "/System/Apple.app", appleSigned: true),
+            KeyboardListener(processID: 4, path: nil)
+        ], home: "/Users/fixture")
+        try checkEqual(snapshot.coverage.activeApps, 3)
+        try checkEqual(snapshot.findings.count, 3)
+        try checkFalse(snapshot.findings.contains { $0.level == .threat })
+        let shortcuts = try unwrap(snapshot.findings.first { $0.title == "Shortcuts" })
+        try checkEqual(shortcuts.location, "~/Tools/Shortcuts.app")
+        try checkEqual(shortcuts.action, .settings)
+        try checkEqual(shortcuts.level, .review)
+        try checkTrue(shortcuts.evidence.contains { $0.contains("2 active listeners") })
+        try checkEqual(snapshot.findings.first { $0.location == "/System/Apple.app" }?.level, .information)
+        // A system-looking path without a verified running-code signature earns no trust.
+        try checkEqual(KeyboardReview.make([KeyboardListener(processID: 9, path: "/System/Fake.app")]).findings.first?.level, .review)
+        try checkEqual(KeyboardReview.make([], available: false).coverage.status, "unavailable")
+        try checkEqual(KeyboardReview.make([]).coverage.status, "checked")
+        try checkEqual(KeyboardReview.make([], truncated: true).coverage.status, "partial")
+    }
+    func testKeyboardRefreshPreservesOtherResultsAndOlderReportCompatibility() throws {
+        let oldJSON = #"{"version":1,"id":"old","createdAt":"2026-09-05T00:00:00Z","scannedItems":8,"coverage":{"inventory":"complete","malware":"partial","limitations":["Some files were inaccessible"]},"findings":[]}"#
+        var old = try JSONDecoder().decode(ScanReport.self, from: Data(oldJSON.utf8))
+        try checkTrue(old.coverage.keyboard == nil)
+        var threat = Finding(path: "/tmp/fixture", title: "Fixture", category: "Malware scan", level: .threat, explanation: "Fixture", evidence: [], action: .quarantine)
+        threat.resolved = true; old.findings = [threat]
+        let first = KeyboardReview.make([KeyboardListener(processID: 7, path: "/Applications/Fixture.app")]).merging(into: old)
+        let refreshed = KeyboardReview.make([]).merging(into: first)
+        try checkEqual(refreshed.findings, [threat])
+        try checkEqual(refreshed.createdAt, old.createdAt)
+        try checkEqual(refreshed.coverage.malware, "partial")
+        try checkEqual(refreshed.coverage.limitations, old.coverage.limitations)
+        try checkFalse(refreshed.id == first.id)
+        let key = SymmetricKey(size: .bits256)
+        let envelope = try RelayCrypto.seal(first, key: key, direction: "report")
+        let decoded = try RelayCrypto.open(envelope, as: ScanReport.self, key: key, direction: "report", maximumAge: 120)
+        try checkEqual(decoded.coverage.keyboard?.activeApps, 1)
+        try checkTrue(decoded.findings.contains { $0.action == .settings })
+    }
 }
 
 struct CheckFailure: Error, CustomStringConvertible { let description: String }
@@ -104,7 +151,9 @@ func unwrap<T>(_ value: T?) throws -> T { guard let value else { throw CheckFail
             ("Startup inventory paths and conservative classification", checks.testInventoryPreservesBinaryAndStartupPathsWithoutCallingUnsignedMalware),
             ("Quarantine, restore and replacement protection", checks.testQuarantineAndRestoreNeverOverwriteReplacement),
             ("Changed file, symlink and hardlink rejection", checks.testCleanupRejectsChangedFilesSymlinksAndHardlinks),
-            ("Cancellation prevents subsequent process execution", checks.testCancelledRunnerCannotStartAnotherProcessUntilExplicitReset)
+            ("Cancellation prevents subsequent process execution", checks.testCancelledRunnerCannotStartAnotherProcessUntilExplicitReset),
+            ("Keyboard tap filtering, grouping and conservative classification", checks.testKeyboardReviewGroupsAppsWithoutCallingListenersMalware),
+            ("Keyboard refresh, encryption and older report compatibility", checks.testKeyboardRefreshPreservesOtherResultsAndOlderReportCompatibility)
         ]
         for (name, run) in cases { print("CHECK: " + name); fflush(stdout); try run(); print("PASS: " + name); fflush(stdout) }
         print("All \(cases.count) native core checks passed using temporary fixtures.")

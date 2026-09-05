@@ -6,7 +6,7 @@ import IRISCore
 
 struct Connection: Codable { let id: String; let token: String; let key: String; let expiresAt: Double }
 struct SavedScan: Codable { let report: ScanReport; let items: [String: LocalItem] }
-struct SharedState: Codable { let version: Int; let status: String; let message: String; let report: ScanReport?; let updatedAt: Double }
+struct SharedState: Codable { let version: Int; let status: String; let message: String; let report: ScanReport?; let updatedAt: Double; let capabilities: [String] }
 struct PollResponse: Decodable { let command: Envelope?; let browserActive: Bool }
 struct ClaimResponse: Decodable { let id: String; let token: String; let expiresAt: Double }
 
@@ -60,16 +60,31 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         engine.runner.resetCancellation()
         scanTask = Task {
             do {
+                let keyboard = await Task.detached { KeyboardScanner.check() }.value
+                try Task.checkCancellation()
+                report = keyboard.merging(into: report); saveScan(); await publish()
                 let progress: @Sendable (String) -> Void = { [weak self] text in Task { @MainActor in self?.message = text; await self?.publish() } }
                 try await engine.prepare(progress: progress)
                 try Task.checkCancellation()
                 let work = Task.detached { try engine.scan(progress: progress) }
                 let result = try await withTaskCancellationHandler { try await work.value } onCancel: { work.cancel(); engine.runner.cancel() }
                 try Task.checkCancellation()
-                report = result.0; localItems = result.1; saveScan()
+                report = keyboard.merging(into: result.0); localItems = result.1; saveScan()
                 message = "Your review is ready. Start with the items that need attention."
             } catch is CancellationError { message = "Scan stopped. Your previous review is still available." }
             catch { problem = error.localizedDescription; message = "Your scan needs attention." }
+            busy = false; await publish()
+        }
+    }
+    func checkKeyboard() {
+        guard !busy else { return }
+        busy = true; problem = nil; message = "Checking keyboard access…"
+        scanTask = Task {
+            let keyboard = await Task.detached { KeyboardScanner.check() }.value
+            if !Task.isCancelled {
+                report = keyboard.merging(into: report); saveScan()
+                message = keyboard.coverage.status == "unavailable" ? "Keyboard access could not be checked. Your other results are still available." : "Keyboard review updated. Your other scan results are still available."
+            } else { message = "Check stopped. Your previous review is still available." }
             busy = false; await publish()
         }
     }
@@ -81,6 +96,8 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
     }
     func openWeb() { NSWorkspace.shared.open(URL(string: "https://app.undercoveriris.io/device")!) }
     func openFullDiskAccess() { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!) }
+    func openKeyboardSettings() { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!) }
+    func openAccessibilitySettings() { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!) }
     func connect(_ url: URL) {
         guard url.scheme == "iris-companion", url.host == "connect", let parts = URLComponents(url: url, resolvingAgainstBaseURL: false), let query = parts.queryItems,
               query.count == 2, let ticket = query.first(where: { $0.name == "ticket" })?.value, let id = query.first(where: { $0.name == "id" })?.value,
@@ -127,7 +144,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                 sharedReport?.coverage.limitations.append("The web dashboard shows a shortened report. The complete review remains in the Mac app.")
                 while let value = sharedReport, (try JSONEncoder().encode(value)).count > 380_000, !value.findings.isEmpty { sharedReport?.findings.removeLast() }
             }
-            let state = SharedState(version: 1, status: busy ? "scanning" : problem == nil ? (report == nil ? "ready" : "complete") : "attention", message: message, report: sharedReport, updatedAt: Date().timeIntervalSince1970 * 1000)
+            let state = SharedState(version: 1, status: busy ? "scanning" : problem == nil ? (report == nil ? "ready" : "complete") : "attention", message: message, report: sharedReport, updatedAt: Date().timeIntervalSince1970 * 1000, capabilities: ["keyboardCheck"])
             let box = try RelayCrypto.seal(state, key: RelayCrypto.decodeKey(c.key), direction: "report")
             let payload = try JSONSerialization.jsonObject(with: JSONEncoder().encode(box))
             let _: EmptyResponse = try await request(["action": "report", "id": c.id, "payload": payload], token: c.token)
@@ -163,11 +180,17 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
     }
     func perform(_ command: DeviceCommand) {
         if command.action == "scan" { startScan(); return }
+        if command.action == "keyboardCheck" { checkKeyboard(); return }
         guard !busy, let report, command.reportId == report.id, let id = command.findingId, let finding = report.findings.first(where: { $0.id == id && !$0.resolved }), command.action == finding.action.rawValue else { return }
         act(finding)
     }
     func act(_ finding: Finding) {
-        guard !busy, let item = localItems[finding.id] else { return }
+        guard !busy else { return }
+        if finding.action == .settings, finding.category == KeyboardReview.category {
+            message = "Turn off access for apps you do not trust in Input Monitoring. If the app is not listed, check Accessibility. Quit that app, then recheck keyboard access."
+            openKeyboardSettings(); Task { await publish() }; return
+        }
+        guard let item = localItems[finding.id] else { return }
         if finding.action == .reveal { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)]); return }
         guard finding.action == .quarantine || finding.action == .disableStartup, let hash = item.sha256 else { return }
         NSApp.activate(ignoringOtherApps: true)
