@@ -1,17 +1,19 @@
 # IRIS Mac Companion
 
-A free, open-source Mac companion for IRIS by HANS Society Foundation. It helps people understand startup software, check common download locations against malware signatures and perform supported, reversible cleanup. Dark purple SwiftUI interface; macOS 13+; Apple silicon and Intel.
+A free, open-source Mac companion for IRIS by HANS Society Foundation. It helps people understand startup software and active keyboard listeners, check common download locations against malware signatures and perform supported, reversible cleanup. Dark purple SwiftUI interface; macOS 13+; Apple silicon and Intel.
 
 **Development release. No signed public download is available yet.** Public distribution requires Developer ID Application signing, Apple notarization, and the release checks below.
 
 ## What works together
 
-1. Run the app and choose **Scan my Mac**. It prepares the original, checksum- and signature-verified KnockKnock release and uses the ClamAV scanner included in the IRIS download. Malware definitions are downloaded on the first scan.
+1. Run the app and choose **Scan my Mac**. The same action checks keyboard privacy first, without recording keystrokes or downloading another engine. It prepares the original, checksum- and signature-verified KnockKnock release and uses the ClamAV scanner included in the IRIS download. Malware definitions are downloaded on the first scan.
 2. Grant Full Disk Access in System Settings for protected locations. Scans report limits instead of treating inaccessible files as safe.
 3. Start a connection from the IRIS Device page and confirm the matching code on the Mac. The report appears in the web dashboard.
 4. Review findings. File changes always require a native confirmation. User-owned regular files in Downloads, Desktop and user LaunchAgents can be quarantined and restored; other locations open in Finder for guided review.
 
-KnockKnock inventories persistence; it does not label every listed program malware. ClamAV supplies maintained known-threat signatures. No VirusTotal requests or file uploads are made. This is an on-demand review, not continuous endpoint protection or a guarantee against infection.
+KnockKnock inventories persistence; it does not label every listed program malware. ClamAV supplies maintained known-threat signatures. No VirusTotal requests or file uploads are made. ReiKey's GPLv3 event-tap enumeration is adapted into an on-demand keyboard review: listeners are grouped by application, legitimate Apple processes require a verified running-code signature, and an unknown listener is a review item rather than a malware verdict. Keyboard actions open macOS privacy settings. Rechecking preserves other findings and their scan date. This is an on-demand review, not continuous endpoint protection or a guarantee against infection.
+
+See [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md) for the shared Mac/browser/web experience and next Objective-See integrations.
 
 ## Build and test
 

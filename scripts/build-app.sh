@@ -21,6 +21,7 @@ mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$binary" "$bundle/Contents/MacOS/IRISCompanion"
 cp Resources/Info.plist "$bundle/Contents/Info.plist"
 cp Resources/IRISAvatar.jpg "$bundle/Contents/Resources/"
+cp Resources/HANSIcon.png Resources/IRIS.icns "$bundle/Contents/Resources/"
 cp LICENSE THIRD_PARTY_NOTICES.md "$bundle/Contents/Resources/"
 python3 scripts/prepare-clamav.py
 codesign --force --sign - "$bundle"
