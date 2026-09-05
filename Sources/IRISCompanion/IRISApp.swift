@@ -19,6 +19,7 @@ import IRISCore
 struct GuardianView: View {
     @ObservedObject var model: CompanionModel
     @State private var section = "Review"
+    @State private var expandedFindings: [String: Bool] = [:]
     private let violet = Color(red: 0.76, green: 0.64, blue: 1)
     var body: some View {
         HStack(spacing: 0) {
@@ -82,7 +83,7 @@ struct GuardianView: View {
                 }
                 Text("Startup check: \(coverageLabel(report.coverage.inventory)) · Malware check: \(coverageLabel(report.coverage.malware))").font(.caption).foregroundStyle(.secondary)
                 ForEach(model.unresolved) { finding in
-                    DisclosureGroup {
+                    DisclosureGroup(isExpanded: Binding(get: { expandedFindings[finding.id] ?? (finding.level != .information) }, set: { expandedFindings[finding.id] = $0 })) {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(finding.explanation).fixedSize(horizontal: false, vertical: true)
                             ForEach(finding.evidence, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
