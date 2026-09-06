@@ -4,6 +4,8 @@ A free, open-source Mac companion for IRIS by HANS Society Foundation. It helps 
 
 **Development release. No signed public download is available yet.** Public distribution requires Developer ID Application signing, Apple notarization, and the release checks below.
 
+Version 0.2 adds a large scan action, six-stage progress and selected-file counters, explicit Full Disk Access guidance with a draggable app icon and Finder shortcut, and FileVault/firewall/Gatekeeper status. Startup permission failures are distinguished from other scanner failures. Cancelled scans preserve the previous report.
+
 ## What works together
 
 1. Run the app and choose **Scan my Mac**. The same action checks keyboard privacy first, without recording keystrokes or downloading another engine. It prepares the original, checksum- and signature-verified KnockKnock release and uses the ClamAV scanner included in the IRIS download. Malware definitions are downloaded on the first scan.
@@ -22,10 +24,10 @@ Install a current, internally consistent Xcode toolchain (or matching Command Li
 ```sh
 swift run IRISCoreChecks
 scripts/build-app.sh
-open 'dist/IRIS Mac Companion.app'
+open 'dist/IRIS Mac Companion Development.app'
 ```
 
-The local app is ad-hoc signed and is for development only. Unit tests operate on generated temporary fixtures; they do not scan or clean the developer's personal files. Engine downloads are pinned in `EngineService.swift` and documented in `THIRD_PARTY_NOTICES.md`.
+The local app is ad-hoc signed and is for development only. It uses a separate bundle ID, Keychain service, preferences and Application Support directory and does not register the production connection URL. This prevents test builds from requesting access to installed users’ saved keys. Production uses a stable Developer ID identity; locked saved keys require an explained, user-initiated unlock rather than an unexpected startup prompt. Unit tests operate on generated temporary fixtures; they do not scan or clean the developer's personal files. Engine downloads are pinned in `EngineService.swift` and documented in `THIRD_PARTY_NOTICES.md`.
 
 ## Trusted public release
 

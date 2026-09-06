@@ -40,6 +40,26 @@ final class CoreChecks {
         try checkTrue(startup.location.hasPrefix("~/"))
         try checkThrows(try InventoryParser.parse(Data("{\"bad\":1}".utf8)))
     }
+    func testScanJourneyDoesNotConfusePermissionFailuresOrSkippedFilesWithSafety() throws {
+        try checkEqual(ScanAssessment.startupFailure(Data("ERROR: KnockKnock (Terminal) requires Full Disk Access.".utf8)), "needsPermission")
+        try checkEqual(ScanAssessment.startupFailure(Data("Scanner timed out".utf8)), "incomplete")
+        let tracker = MalwareProgress(paths: ["/tmp/a", "/tmp/b", "/tmp/c"]) { _ in }
+        tracker.receive(Data("/tmp/a: O".utf8)); try checkEqual(tracker.checked, 0)
+        tracker.receive(Data("K\n/tmp/b: Heuristics.Limits.Exceeded.MaxFileSize FOUND\n/tmp/not-selected: OK\n/tmp/c: Eicar-Test-Signature FOUND".utf8))
+        tracker.finish(); try checkEqual(tracker.checked, 2)
+        tracker.receive(Data("/tmp/a: OK\n".utf8)); try checkEqual(tracker.checked, 2)
+        var report = ScanReport(scannedItems: 0, coverage: Coverage(inventory: "needsPermission", malware: "partial"), findings: [])
+        try checkTrue(ScanAssessment.needsAttention(report))
+        try checkTrue(ScanAssessment.summary(report).contains("Full Disk Access"))
+        report.coverage.inventory = "complete"; report.coverage.malware = "complete"
+        report.coverage.keyboard = KeyboardReview.make([]).coverage
+        try checkFalse(ScanAssessment.needsAttention(report))
+        try checkTrue(ScanAssessment.summary(report).contains("files checked"))
+        try checkEqual(ScanAssessment.safeguard("filevault", output: "FileVault is Off.", status: 0), "disabled")
+        try checkEqual(ScanAssessment.safeguard("filevault", output: "Encryption in progress", status: 0), "unknown")
+        try checkEqual(ScanAssessment.safeguard("firewall", output: "Firewall is enabled. (State = 1)", status: 0), "enabled")
+        try checkEqual(ScanAssessment.safeguard("gatekeeper", output: "assessments enabled", status: 1), "unknown")
+    }
     func fixture() throws -> (URL, QuarantineStore) {
         let base = URL(fileURLWithPath: "/private/tmp").appendingPathComponent("iris-test-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: base.appendingPathComponent("Downloads"), withIntermediateDirectories: true)
@@ -147,6 +167,7 @@ func unwrap<T>(_ value: T?) throws -> T { guard let value else { throw CheckFail
     static func main() throws {
         let checks = CoreChecks()
         let cases: [(String, () throws -> Void)] = [
+            ("Scan progress, permission failures and protection status", checks.testScanJourneyDoesNotConfusePermissionFailuresOrSkippedFilesWithSafety),
             ("Authenticated encryption, tampering and expiry", checks.testEncryptedMessagesRejectTamperingWrongDirectionAndExpiry),
             ("Startup inventory paths and conservative classification", checks.testInventoryPreservesBinaryAndStartupPathsWithoutCallingUnsignedMalware),
             ("Quarantine, restore and replacement protection", checks.testQuarantineAndRestoreNeverOverwriteReplacement),

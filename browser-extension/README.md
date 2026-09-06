@@ -1,52 +1,34 @@
 # IRIS — Your browser guardian companion
 
-A Manifest V3 companion for Chrome, Brave and Edge. It provides one local extension-access review, conservative permission explanations, remembered Keep choices and reversible disable/restore. The web app displays the same review after a one-time optional connection. The Mac app is not required for browser checks.
+Manifest V3 companion for Chrome, Brave and Edge. Version 0.1.0 is published at https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg. Version 0.2.0 is the new release candidate; it requires a store update and review before these new features reach installed users.
 
-**Version 0.1.0 is published in the Chrome Web Store.** [Install the browser guardian companion](https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg), then connect it from [IRIS Device & browser](https://app.undercoveriris.io/device). Developer mode is only for contributors.
+## Browser security in one place
 
-The September 6, 2026 release was downloaded from Google's distribution service and matched against the submitted package. Its Chromium integration test passed for local review, saved choices, disable/restore, website connection and disconnection. Browser-specific confirmation behavior should still be checked on Chrome, Brave and Edge when updating the release.
+- Review extension access, keep recognized tools, and disable/restore supported extensions. Keep choices expire after 30 days or a version/permission change. Permissions are not malware verdicts.
+- Opt into extension-change monitoring: browser events update a toolbar review-count badge even when the review page is closed.
+- Opt into known-scam protection: declarative rules block top-level navigation to listed hostnames and their subdomains before the network request. A local warning offers dashboard, Mac-scan and wallet-approval follow-ups. Up to 100 already-open tabs are checked when enabling protection; these events are labeled already-open, not blocked-before-load.
+- Link checks and optional recent-history checks run locally. History checks inspect up to 5,000 entries from seven days, only on a user click; only matched hostnames are saved locally. This is not transaction simulation or proof that a wallet was compromised.
+- ScamSniffer's GPLv3 public database ships as a pinned snapshot. Protection updates it daily from the fixed public GitHub URL. The source has a seven-day delay. Updates are bounded, validated domain data, never executable code. Update failures keep installed protection and show a warning. Source metadata and license are in `data/`.
 
-## What works
+## Permissions and data
 
-- Installation opens the review automatically. The toolbar icon opens it again.
-- Broad website access, clipboard, history, cookies, debugger, proxy, native messaging and other relevant permissions are explained without declaring an extension malware.
-- Keep choices last 30 days and are bound to the exact reported extension version and permissions. Turn off runs inside the extension-owned page with a real user gesture. The browser can add its own confirmation.
-- Restore is offered only for an IRIS-recorded disable with unchanged version/access, when browser policy permits it. Permission increases and managed extensions are sent to browser settings.
-- Reports exclude IRIS itself and themes, have size limits and identify partial coverage. No page scripts, browsing history or file contents are scanned.
-- No accounts, external dependencies, content scripts, host permissions, telemetry or server-side inventory storage.
+Required: management (extension review and explicit changes), storage (preferences, undo, consent and bounded reports), declarativeNetRequest (local blocking), alarms (daily database refresh). Optional: history (on-demand recent review), webNavigation (warning-page handoff and already-open tab review when protection is enabled). No page-content, clipboard, wallet-secret, native-messaging or broad host permissions.
 
-## Web connection and trust
+Normal navigation URLs are processed transiently by navigation events and are not saved. Scam warning activity retains only hostnames, time and blocked/already-open status, at most 100 records for 30 days. Recent-history results expire after seven days. Expired records are pruned when the companion runs. Clear controls remove them immediately. No browsing URL is sent to the feed provider. GitHub sees normal request metadata for daily downloads.
 
-The optional 30-day connection permits only `https://app.undercoveriris.io` to request status and a sanitized extension report. Sharing remains local to this browser profile; the report is not attached to an IRIS account or uploaded to the Mac relay. The endpoint rejects other extensions, frames, incognito contexts, arbitrary URLs, and enable/disable commands. Report disclosure revalidates sharing after its asynchronous audit. Web requests may open the companion's trusted review page, where the user makes changes.
+An optional 30-day connection allows only top-level https://app.undercoveriris.io to display the extension report directly in this browser profile. Protection's consent explains sharing warning hostnames and times. Recent-history sharing includes aggregate counts/date only. The report is not uploaded to the Mac relay or attached to an IRIS account. Other origins, frames, incognito, extensions and web-requested mutations are rejected. Consent is rechecked after asynchronous work. The Mac uses its separate encrypted pairing; direct native messaging and cross-profile browser-report synchronization are not implemented.
 
-The website itself must be trusted: once connected, JavaScript served by that exact origin can read the report. The connection can be revoked in either interface. This is not end-to-end encryption to a server; data crosses directly from the extension to its authorized website in the same browser. Mac-to-browser native messaging is planned separately and is not enabled by this build.
+## Build and verification
 
-## Permissions
-
-- `management`: read extension metadata and perform the user's explicit changes inside the companion.
-- `storage`: remember scoped review decisions, supported undo state and the optional expiring connection.
-
-No `tabs`, `history`, clipboard, page-reading or network host permission is requested. Creating a tab does not require reading tab contents.
-
-## Development and testing
-
-Use a fresh test profile and load this directory unpacked for development only. `manifest.json` has a public development key so automated tests have a stable ID; it is not a store signing key.
+Use a fresh test profile and load this folder unpacked. Its public development key is separate from the published extension ID; the packager strips it.
 
 ```sh
 node --test browser-extension/tests/*.test.mjs
 python3 browser-extension/package.py
 ```
 
-The web repository contains a real Chromium integration test. Set `IRIS_BROWSER_SOURCE` to this directory and run `node tests/browser-companion.e2e.cjs` there. It installs only IRIS and a harmless fixture in a temporary profile, uses mocked web responses, and does not touch the developer's own extensions or data. Production runtime has no npm dependencies.
+The web repository's `tests/browser-companion.e2e.cjs` tests the real Chromium extension and a harmless fixture, with production traffic blocked. Release checks also exercise optional history in an isolated profile and verify the complete phishing block → warning → activity → opt-out flow against a local HTTP server. Never use a developer's browsing history or visit live scam sites for tests.
 
-## Store submission
+Upload `dist/IRIS-Browser-Companion-0.2.0.zip` to the existing store item, update permissions/privacy disclosures and screenshots, and complete review. Keep `store/release.json` at the actually published version until Google serves the new package. The install link and extension ID remain unchanged.
 
-1. Register a Chrome Web Store developer account and complete publisher verification using accurate details. The publisher makes the trader/non-trader declaration.
-2. Upload `dist/IRIS-Browser-Companion-0.1.0.zip` as a new item. The packaging allowlist excludes tests and the development key.
-3. Preserve the existing store listing and extension ID when uploading updates. `store/release.json` records its ID and public key. Production `IRIS_BROWSER_EXTENSION_ID` must match that ID; the unpacked development build intentionally uses a separate test identity.
-4. Supply screenshots, a single-purpose description and permission justifications. Privacy URL: `https://app.undercoveriris.io/device-privacy`. Describe the optional direct website disclosure accurately in the store privacy questionnaire; do not claim data never leaves the extension context.
-5. Verify a store-distributed build on Chrome, Brave and Edge, including native permission confirmations, restore and web connection. Then publish the listing and set `IRIS_BROWSER_STORE_URL` to the approved installable Chrome Web Store URL. Apple enrollment is unrelated to this release.
-
-Single purpose: help users review and reduce access held by their installed browser extensions. No wallet transaction inspection, phishing detection, browsing surveillance, or device malware scanning is claimed for this release.
-
-Copyright © 2026 HANS Society Foundation. GPL-3.0-only; the full license is included. This browser code is an IRIS implementation using Chromium APIs. Objective-See attribution remains attached to the Mac components derived from their projects; Objective-See did not supply or endorse this extension.
+Copyright © 2026 HANS Society Foundation. GPL-3.0-only. ScamSniffer provides the GPLv3 threat data; Objective-See provides the attributed Mac components. Neither independently endorses IRIS. Support: support@joinhans.io.

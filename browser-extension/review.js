@@ -1,3 +1,4 @@
+import { loadDatabase, checkLink, reviewHistory, updateBadge } from "./protection.mjs";
 import { createService, WEB_ORIGIN, sharingActive } from "./service.mjs";
 import { fingerprint, ID, REVIEW_AGE } from "./audit.mjs";
 const service = createService(chrome);
@@ -121,7 +122,9 @@ function card(item) {
     );
     reasons.append(li);
   }
-  box.append(reasons);
+  if (item.reasons.length) box.append(node("p", item.reasons[0].title + ". " + item.reasons[0].description));
+  const why = node("details"); why.append(node("summary", "Why this needs a review"), reasons);
+  if (item.reasons.length > 1) box.append(why);
   if (!item.reasons.length)
     box.append(
       node(
@@ -193,12 +196,22 @@ function card(item) {
 async function refresh() {
   const g = ++generation;
   try {
-    const [report, { sharing }] = await Promise.all([
+    const [report, { sharing, extensionWatch, historyReview, scamGuard, scamActivity }] = await Promise.all([
       service.report(),
-      chrome.storage.local.get("sharing"),
+      chrome.storage.local.get(["sharing", "extensionWatch", "historyReview", "scamGuard", "scamActivity"]),
     ]);
     if (g !== generation) return;
     const connected = sharingActive(sharing);
+    $("#scam-guard").checked = scamGuard?.enabled === true;
+    $("#scam-guard-status").textContent = scamGuard?.enabled ? `Protection on · ${scamGuard.source?.domains?.toLocaleString() || 'Known'} hostnames${scamGuard.source?.fetchedAt ? ' · Updated '+new Date(scamGuard.source.fetchedAt).toLocaleString() : ' · Packaged snapshot'}${scamGuard.updateError ? ' · '+scamGuard.updateError : ''}` : 'Protection is off. Enable it to block known scam sites.';
+    const events = report.security.activity; $("#scam-activity").replaceChildren();
+    for(const event of events.slice(-5).reverse()) $("#scam-activity").append(node('p', `${event.kind === 'blocked' ? 'Blocked' : 'Found open'}: ${event.host} · ${new Date(event.at).toLocaleString()}`));
+    $("#watch").checked = extensionWatch === true;
+    const count = report.extensions.length; const left = report.extensions.filter(x => x.priority === "review").length;
+    $("#journey-summary").textContent = left ? `${left} decision${left === 1 ? "" : "s"} left. Keep tools you recognize; turn off ones you no longer need.` : "Extension review up to date. You can still check links and recent browsing below.";
+    $("#review-progress").max = Math.max(1,count); $("#review-progress").value = count ? count - left : 1;
+    renderHistory(historyReview);
+    await updateBadge(chrome, report);
     $("#connect").textContent = connected
       ? "Open IRIS dashboard ↗"
       : "Connect to IRIS ↗";
@@ -208,7 +221,7 @@ async function refresh() {
       : "Bring this review into IRIS";
     $("#connection-copy").textContent = connected
       ? "This browser can show its extension review in the IRIS web app. Disconnect whenever you want."
-      : "Connect once to share extension names and permission summaries with app.undercoveriris.io in this browser for 30 days. No separate login is needed.";
+      : "Connect once to share extension names, permission summaries and security-check counts with app.undercoveriris.io in this browser for 30 days. No separate login is needed.";
     const todo = report.extensions.filter((x) => x.priority === "review");
     const other = report.extensions.filter((x) => x.priority !== "review");
     $("#summary").textContent =
@@ -291,3 +304,65 @@ for (const event of [
   event.addListener(() => void refresh());
 window.addEventListener("focus", () => void refresh());
 void refresh();
+
+$("#watch").addEventListener("change", async event => {
+  try { await chrome.storage.local.set({ extensionWatch: event.target.checked }); }
+  catch { message("IRIS could not save monitoring preferences. Please try again."); }
+});
+let checkingHistory = false; let historyGeneration = 0;
+$("#link-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const input = $("#link").value;
+  $("#link-result").textContent = "Checking the local threat list…";
+  try {
+    const { domains } = await loadDatabase(); const result = checkLink(input, domains);
+    $("#link-result").textContent = !result.host ? "Enter a valid http or https website link." : result.match ? `${result.host} is on the known crypto-phishing list. Do not connect your wallet or sign anything there.` : `${result.host}: no exact match in this snapshot. This does not establish that the site is safe.`;
+    $("#link-result").className = result.match ? "warning" : "muted";
+  } catch { $("#link-result").textContent = "The local list could not load. The link has not been checked."; }
+});
+function renderHistory(value) {
+  const root = $("#history-result"); root.replaceChildren();
+  if (!value || value.checkedAt < Date.now() - 7 * 86400000) return;
+  root.append(node("p", `${value.checkedCount} history entries checked · ${value.matchCount} flagged hostnames · ${new Date(value.checkedAt).toLocaleString()}`));
+  if (value.partial) root.append(node("p", "History limit reached. Some entries from the last 7 days were not checked.", "muted"));
+  if (!value.matchCount) { root.append(node("p", "No matches in the checked history against this snapshot. Private browsing and other profiles are not included.", "muted")); return; }
+  root.append(node("p", "A visit does not prove your wallet or device was compromised. If you entered a seed phrase, signed a transaction, or downloaded a file there, review the steps below.", "warning"));
+  const list = node("ul");
+  for (const item of value.matches.slice(0,100)) list.append(node("li", item.host));
+  root.append(list);
+  if (value.matchCount > 100) root.append(node("p", "Showing the first 100 flagged hostnames."));
+  const link = node("a", "Review wallet approvals in IRIS ↗", "primary"); link.href = WEB_ORIGIN + "/wallet"; link.target = "_blank"; link.rel = "noopener noreferrer";
+  root.append(link, node("p", "Downloaded something? Run the Mac scan from your IRIS dashboard. Clearing browser history does not undo wallet signatures or remove downloaded files.", "muted"));
+}
+$("#history-check").addEventListener("click", async () => {
+  if (checkingHistory) return; const currentHistory = ++historyGeneration; checkingHistory = true; $("#history-check").disabled = true;
+  try {
+    // Request from this user gesture, never from the website or background worker.
+    if (!await chrome.permissions.request({ permissions: ["history"] })) { message("History access was not granted. You can still check individual links."); return; }
+    message("Checking recent browsing locally…");
+    const { domains } = await loadDatabase();
+    const rows = await chrome.history.search({ text: "", startTime: Date.now() - 7 * 86400000, maxResults: 5000 });
+    if (currentHistory !== historyGeneration || !await chrome.permissions.contains({ permissions: ["history"] })) return;
+    const historyReview = reviewHistory(rows, domains);
+    await chrome.storage.local.set({ historyReview }); renderHistory(historyReview);
+    message("Recent-browsing check finished. See the result and next steps below.");
+  } catch { message("The history check could not finish. No browsing entries were changed."); }
+  finally { checkingHistory = false; $("#history-check").disabled = false; }
+});
+$("#history-clear").addEventListener("click", async () => {
+  try { historyGeneration++; await chrome.permissions.remove({ permissions: ["history"] }); await chrome.storage.local.remove("historyReview"); renderHistory(null); message("The saved check and history permission were removed. Your browser history was not changed."); }
+  catch { message("Could not remove the saved check. Please try again."); }
+});
+loadDatabase().then(({source}) => { $("#phishing-source").textContent = `${source.domains.toLocaleString()} exact hostnames. Snapshot ${new Date(source.fetchedAt || source.sourceUpdatedAt).toLocaleDateString()}. ScamSniffer’s public data is delayed by ${source.sourceDelayDays} days.`; }).catch(() => { $("#phishing-source").textContent = "The packaged threat list is unavailable."; });
+
+$("#scam-guard").addEventListener("change", async event=>{
+  const control=event.target;const enabled=control.checked;control.disabled=true;
+  try {
+    if(enabled && !await chrome.permissions.request({permissions:['webNavigation']})){control.checked=false;message('Navigation permission was not granted. Local link and extension checks still work.');return;}
+    const result=await chrome.runtime.sendMessage({action:'setScamGuard',enabled});
+    if(!result?.ok)throw Error(result?.error || 'Protection could not be changed.');
+    message(enabled?'Known-scam protection is on. IRIS will show a warning and next steps for listed sites.':'Known-scam protection is off.');
+    await refresh();
+  }catch(e){message(e.message);await refresh();}finally{control.disabled=false;}
+});
+$("#activity-clear").addEventListener("click",async()=>{await chrome.storage.local.remove('scamActivity');await refresh();});

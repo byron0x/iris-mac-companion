@@ -32,5 +32,5 @@ xcrun stapler staple "$bundle"
 xcrun stapler validate "$bundle"
 spctl --assess --type execute --verbose=2 "$bundle"
 ditto -c -k --keepParent "$bundle" "$archive"
-shasum -a 256 "$archive" > "$archive.sha256"
+(cd dist && shasum -a 256 "IRIS-Mac-$version.zip" > "IRIS-Mac-$version.zip.sha256")
 printf 'Verified release archive: %s\n' "$archive"

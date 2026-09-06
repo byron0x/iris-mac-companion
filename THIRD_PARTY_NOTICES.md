@@ -38,3 +38,7 @@ The app fetches ClamAV definitions with the upstream `freshclam` updater. A sign
 ## Distribution policy
 
 Publish the complete corresponding IRIS source for each binary release, including build and installation scripts and this file. Also upload `dist/clamav-1.5.4.tar.gz` alongside the binary in the same release, preserving its full upstream source/build instructions and licenses. If future releases modify or bundle an upstream scanner, first include that scanner's required notices and complete corresponding source for the exact distributed binary. Do not substitute attribution for the applicable license obligations. Do not include VirusTotal API credentials without an agreement permitting the intended IRIS use.
+
+## Browser threat data — ScamSniffer
+
+Browser companion 0.2 includes the GPLv3 ScamSniffer Web3 Scam Database, initially pinned to commit `1bc0b0354537dc7c3511f3d26ca03d2e7504b67e`. Attribution, source hash and the unmodified license are included in `browser-extension/data`. Optional protection refreshes domain data from the same project's fixed public GitHub feed; its seven-day delay is disclosed. IRIS does not claim endorsement or real-time coverage. Source: https://github.com/scamsniffer/scam-database

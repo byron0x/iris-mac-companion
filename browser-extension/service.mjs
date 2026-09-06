@@ -1,3 +1,4 @@
+import { recentActivity } from './scam-guard.mjs';
 // Copyright © 2026 HANS Society Foundation. GPL-3.0-only.
 import { buildReport, ID, REVIEW_AGE } from "./audit.mjs";
 export const WEB_ORIGIN = "https://app.undercoveriris.io";
@@ -27,15 +28,23 @@ export function createService(browser, now = Date.now) {
   async function report() {
     const [infos, state] = await Promise.all([
       browser.management.getAll(),
-      browser.storage.local.get(["choices", "changes"]),
+      browser.storage.local.get(["choices", "changes", "extensionWatch", "historyReview", "scamGuard", "scamActivity"]),
     ]);
-    return buildReport(
+    const result = buildReport(
       infos,
       browser.runtime.id,
       state.choices,
       state.changes,
       now(),
     );
+    let history = state.historyReview;
+    if (history && (!Number.isSafeInteger(history.checkedAt) || history.checkedAt <= now() - 7 * 86400000 || history.checkedAt > now())) {
+      await browser.storage.local.remove('historyReview'); history = null;
+    }
+    const activity = recentActivity(state.scamActivity, now());
+    if (Array.isArray(state.scamActivity) && activity.length !== state.scamActivity.length) await browser.storage.local.set({scamActivity:activity});
+    result.security = { scamGuard: state.scamGuard || {enabled:false}, activity, extensionWatch: state.extensionWatch === true, history: history && history.checkedAt > now() - 7 * 86400000 ? { checkedAt: history.checkedAt, checkedCount: history.checkedCount, matchCount: history.matchCount, partial: history.partial } : null };
+    return result;
   }
   async function external(message, sender) {
     if (

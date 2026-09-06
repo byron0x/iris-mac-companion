@@ -22,7 +22,7 @@ def download(name, digest):
 
 pkg = download('clamav-1.5.4.macos.universal.pkg', 'df7fa753e2f9f67f3bc99b2a40a3be7ef559088c68ad6bdf66b4b5764e965bd6')
 source = download('clamav-1.5.4.tar.gz', '1af1117a228f1b5bc7fa91a0dabc37848a99e7d25188e9be8043332ce721dfd3')
-bundle = BASE / 'dist' / 'IRIS Mac Companion.app'
+bundle = pathlib.Path(os.environ.get('IRIS_APP_BUNDLE', str(BASE / 'dist' / 'IRIS Mac Companion.app')))
 target = BASE / '.build' / 'ClamAV-runtime'
 legacy = bundle / 'Contents' / 'Frameworks' / 'ClamAV'
 if legacy.exists(): shutil.rmtree(legacy)

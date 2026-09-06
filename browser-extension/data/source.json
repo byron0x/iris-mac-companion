@@ -1,0 +1,11 @@
+{
+  "source": "ScamSniffer Web3 Scam Database",
+  "sourceUrl": "https://github.com/scamsniffer/scam-database",
+  "commit": "1bc0b0354537dc7c3511f3d26ca03d2e7504b67e",
+  "sourceUpdatedAt": "2026-09-06T10:45:56Z",
+  "sourceDelayDays": 7,
+  "domains": 353343,
+  "sourceSHA256": "0fba33cea4fffd327537a17065182a15849aa838f06c1e4ed3fb126c82dd26aa",
+  "license": "GPL-3.0",
+  "scope": "Exact listed hostnames, not every subdomain. Snapshot only; newer and unlisted scams will be missed."
+}

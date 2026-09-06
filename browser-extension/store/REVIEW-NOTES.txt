@@ -1,15 +1,14 @@
-No login, subscription, wallet or Mac app is required to test the browser companion. Use a test browser profile with a harmless extension installed.
+IRIS browser companion 0.2.0 update
 
-1. Install IRIS. Its review opens automatically; the toolbar icon reopens it. Review the reported permissions for the test extension. These are possible access, not a malware verdict.
-2. Choose Keep this extension, reload the review, and expand Other extensions. The choice remains. Choose Review again to return it to the review list.
-3. Choose Turn off for a non-managed test extension. Confirm any browser prompt. Under Other extensions, Restore extension re-enables supported unchanged extensions. Do not test with critical personal extensions.
-4. Optionally choose Connect to IRIS. The button explicitly discloses a 30-day connection for extension names and permission summaries. It opens https://app.undercoveriris.io/device, where the extension review appears without an IRIS login. Review in companion opens the trusted extension UI; the website cannot change extensions directly.
-5. Disconnect browser in the website, or Disconnect in the extension. Subsequent website report requests receive no inventory. The local companion continues working.
+Adds a local crypto-phishing link check, an optional last-7-days history check, an opt-in extension-change badge, and simpler extension review. Required permissions: management, storage, declarativeNetRequest and alarms. Optional webNavigation enables warning pages and checking already-open tabs after consent. History is optional and requested only by the user's Check my last 7 days click. No broad host permissions, page content access, transaction inspection, native messaging or remote code. Known-scam blocking uses local declarative rules; validated domain data updates daily from the fixed ScamSniffer GitHub feed.
 
-Data disclosure: User activity refers to local review choices and supported undo records, alongside extension metadata used for this access review. The extension does not collect browsing history, page contents, copied text, keystrokes, passwords, wallet data or telemetry. Optional website reporting stays in the same browser and is not sent to an IRIS inventory server. The management and storage permissions are the only requested permissions; there are no host permissions, content scripts, remote code or native-messaging permission.
+Test: open the extension review, paste https://example.com and choose Check link. This returns no exact match, explicitly not a safety verdict. The packaged ScamSniffer GPLv3 hostname snapshot and its date, seven-day delay and exact-match limitations are disclosed. No entered links leave the browser.
 
-The Mac companion section is a separate forthcoming application and is not required by this browser extension. The public website installation button remains unavailable until this listing is approved. The production web config is already linked to this exact extension ID: aeamoplfjgalmokafhkcapgpbofinmfg.
+Enable Watch for extension changes. The toolbar badge shows how many extensions need review. Keep a recognized extension or turn one off; undo remains available. This is a permission review, not malware detection.
 
-Source: https://github.com/byron0x/iris-mac-companion/tree/main/browser-extension
+History is processed locally on demand, at most 5,000 entries from seven days. Only matched hostnames are retained locally. Saved checks expire after seven days and are pruned when the extension runs. Forget check & remove history access removes the result and optional permission. No automatic history collection or history deletion.
+
+Connect to IRIS shares the extension report, monitoring state and recent-check aggregate counts directly with app.undercoveriris.io in the same browser for 30 days. Live scam warnings share matched hostname, timestamp and blocked/already-open status after the protection toggle explains this. Matched history-check hostnames and raw URLs are not shared; no scan data is uploaded to the IRIS server. A Google login is not needed to test this browser connection.
+
 Privacy: https://app.undercoveriris.io/device-privacy
 Support: support@joinhans.io

@@ -304,3 +304,21 @@ footer {
     flex-wrap: wrap;
   }
 }
+
+/* Short decisions first; supporting evidence stays expandable. */
+.protection-panel { border: 1px solid #c9a7ff30; border-radius: 24px; padding: 28px; margin: 24px 0; background: #14101f; }
+.protection-panel h2 { margin: 10px 0 16px; }
+progress { width: 100%; height: 9px; accent-color: #c7a4ff; border: 0; border-radius: 9px; margin: 14px 0; }
+.watch-toggle { display: flex; align-items: center; gap: 12px; font-weight: 600; margin-top: 20px; }
+.watch-toggle input { width: 20px; height: 20px; accent-color: #c7a4ff; }
+.link-entry { display: flex; gap: 12px; margin-top: 10px; }
+.link-entry input { min-width: 0; flex: 1; border: 1px solid #c9a7ff50; border-radius: 12px; padding: 14px; background: #0b0812; color: #f2eaff; font: inherit; }
+.history-review { border-top: 1px solid #c9a7ff20; margin: 24px 0; padding-top: 18px; }
+.warning { color: #f8c389; padding: 16px; background: #ad5e1d19; border-radius: 12px; }
+#history-result li { overflow-wrap: anywhere; }
+@media(max-width: 600px) { .protection-panel { padding: 20px; } .link-entry { flex-direction: column; } }
+
+progress::-webkit-progress-bar { background: #30253e; border-radius: 8px; }
+progress::-webkit-progress-value { background: #c7a4ff; border-radius: 8px; }
+.hero { padding: 26px; }
+.hero h1 { font-size: clamp(28px,4vw,40px); }

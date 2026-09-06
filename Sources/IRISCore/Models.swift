@@ -27,6 +27,11 @@ public struct Coverage: Codable, Sendable {
     public var signaturesUpdatedAt: String?
     public var limitations: [String]
     public var keyboard: KeyboardCoverage?
+    public var safeguards: [Safeguard]?
+    public var filesChecked: Int?
+    public var filesSelected: Int?
+    public var skippedFiles: Int?
+    public var inaccessibleLocations: Int?
     public init(inventory: String = "notStarted", malware: String = "notStarted", signaturesUpdatedAt: String? = nil, limitations: [String] = []) {
         self.inventory = inventory; self.malware = malware; self.signaturesUpdatedAt = signaturesUpdatedAt; self.limitations = limitations
     }

@@ -10,7 +10,7 @@ public final class ProcessRunner: @unchecked Sendable {
     public func checkCancellation() throws { lock.lock(); let stopped = cancelled; lock.unlock(); if stopped { throw CancellationError() } }
     public init() {}
     public func cancel() { lock.lock(); cancelled = true; let p = running; lock.unlock(); if let p, p.isRunning { p.terminate(); DispatchQueue.global().asyncAfter(deadline: .now() + 3) { if p.isRunning { kill(p.processIdentifier, SIGKILL) } } } }
-    public func run(_ executable: URL, _ arguments: [String], timeout: TimeInterval = 120, environment: [String: String] = [:]) throws -> ProcessOutput {
+    public func run(_ executable: URL, _ arguments: [String], timeout: TimeInterval = 120, environment: [String: String] = [:], onOutput: (@Sendable (Data) -> Void)? = nil) throws -> ProcessOutput {
         let p = Process(); p.executableURL = executable; p.arguments = arguments
         let out = Pipe(); let err = Pipe(); p.standardOutput = out; p.standardError = err; p.standardInput = FileHandle.nullDevice
         p.environment = ["PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": NSHomeDirectory(), "LANG": "en_US.UTF-8"].merging(environment) { _, value in value }
@@ -27,6 +27,7 @@ public final class ProcessRunner: @unchecked Sendable {
                     if chunk.isEmpty { break }
                     if buffer.data.count + chunk.count > limit { buffer.overflow = true; if p.isRunning { p.terminate() }; continue }
                     buffer.data.append(chunk)
+                    if pipe === out { onOutput?(chunk) }
                 }
             }
         }

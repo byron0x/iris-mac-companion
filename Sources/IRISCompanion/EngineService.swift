@@ -64,55 +64,74 @@ final class EngineService: @unchecked Sendable {
         let _ = try runner.run(clam.appendingPathComponent("Helpers/freshclam"), ["--config-file=" + conf.path, "--stdout"], timeout: 600, environment: ["CVD_CERTS_DIR": clam.appendingPathComponent("Resources/ClamAV/etc/certs").path])
         guard (signatureDate().map { Date().timeIntervalSince($0) < 7 * 86400 } ?? false) else { throw ScanError.commandFailed("Malware definitions could not be updated. Check your connection and try again; the startup review is still available.") }
     }
-    func scan(progress: @escaping @Sendable (String) -> Void) throws -> (ScanReport, [String: LocalItem]) {
+    func scan(progress: @escaping @Sendable (ScanProgress) -> Void) throws -> (ScanReport, [String: LocalItem]) {
         var coverage = Coverage(); var findings: [Finding] = []; var local: [String: LocalItem] = [:]; var inventoryPaths: [String] = []; var scanned = 0
-        progress("Checking software that starts with your Mac…")
+        progress(ScanProgress("startup", step: 4, message: "Checking software that starts with your Mac…"))
         let kk = try runner.run(knock.appendingPathComponent("Contents/MacOS/KnockKnock"), ["-whosthere", "-skipVT"], timeout: 240)
         if kk.status == 0, let inventory = try? InventoryParser.parse(kk.data) {
             findings = inventory.findings; scanned = inventory.scannedItems; inventoryPaths = inventory.scanPaths
             for (id, path) in inventory.paths { local[id] = LocalItem(path: path, sha256: try? fileSHA256(URL(fileURLWithPath: path))) }
             coverage.inventory = inventory.skippedItems == 0 ? "available locations checked" : "partial"
             if inventory.skippedItems > 0 { coverage.limitations.append("Some startup entries were not file paths and need a manual review in KnockKnock.") }
-        } else { coverage.inventory = "incomplete"; coverage.limitations.append("The startup scan did not finish. Grant Full Disk Access to IRIS and scan again.") }
+        } else {
+            coverage.inventory = ScanAssessment.startupFailure(kk.errors)
+            coverage.limitations.append(coverage.inventory == "needsPermission" ? "Startup review needs Full Disk Access. Add this IRIS app in System Settings, enable it, reopen IRIS, then scan again." : "The startup scanner could not finish. Try once more; if it still fails, contact support@joinhans.io. Full Disk Access has not been identified as the cause.")
+        }
         try Task.checkCancellation(); try runner.checkCancellation()
-        progress("Updating known-threat definitions…")
+        progress(ScanProgress("definitions", step: 5, message: "Updating threat definitions. The first download can take several minutes…"))
         do {
             try updateSignatures()
             coverage.signaturesUpdatedAt = signatureDate().map { ISO8601DateFormatter().string(from: $0) }
-            progress("Checking startup files and common download locations for known threats…")
-            var candidates = Set(inventoryPaths.filter { $0.hasPrefix("/") })
-            var truncated = false
+            progress(ScanProgress("malware", step: 6, message: "Finding accessible files in startup locations, Downloads and Desktop…"))
+            var candidates = Set(inventoryPaths.filter { $0.hasPrefix("/") }.sorted().prefix(5000))
+            var truncated = inventoryPaths.count > 5000; var skipped = max(0, inventoryPaths.count - 5000); var inaccessible = 0
             for folder in ["Downloads", "Desktop"] {
                 let url = fm.homeDirectoryForCurrentUser.appendingPathComponent(folder)
-                guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey], options: [.skipsHiddenFiles, .skipsPackageDescendants], errorHandler: { _, _ in truncated = true; return true }) else { truncated = true; continue }
+                guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey], options: [.skipsHiddenFiles, .skipsPackageDescendants], errorHandler: { _, _ in truncated = true; inaccessible += 1; return true }) else { truncated = true; inaccessible += 1; continue }
                 for case let path as URL in enumerator {
                     try runner.checkCancellation()
-                    if candidates.count >= 5000 { truncated = true; break }
-                    if enumerator.level > 6 { enumerator.skipDescendants(); truncated = true; continue }
+                    if candidates.count >= 5000 { truncated = true; skipped += 1; break }
+                    if enumerator.level > 6 { enumerator.skipDescendants(); truncated = true; skipped += 1; continue }
                     let values = try? path.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
                     if values?.isSymbolicLink == true { enumerator.skipDescendants(); continue }
                     if values?.isRegularFile == true, (values?.fileSize ?? 0) <= 100_000_000 { candidates.insert(path.path) }
-                    else if values?.isRegularFile == true { truncated = true }
+                    else if values?.isRegularFile == true { truncated = true; skipped += 1 }
+                    else if values == nil { truncated = true; inaccessible += 1 }
                 }
             }
-            let paths = candidates.filter { !$0.contains("\n") && !$0.contains("\r") && !$0.contains("\u{0}") && fm.fileExists(atPath: $0) }.sorted()
+            let paths = candidates.filter { path in
+                guard !path.contains("\n"), !path.contains("\r"), !path.contains("\u{0}") else { skipped += 1; truncated = true; return false }
+                guard let v = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey]), v.isRegularFile == true, v.isSymbolicLink != true, (v.fileSize ?? 0) <= 100_000_000 else { skipped += 1; truncated = true; return false }
+                return true
+            }.sorted()
+            coverage.filesSelected = paths.count
+            guard !paths.isEmpty else { throw ScanError.commandFailed("No accessible files were selected. Check folder access before trying again.") }
+            let tracker = MalwareProgress(paths: Set(paths), progress: progress)
+            progress(ScanProgress("malware", step: 6, message: "Checking \(paths.count) files for known threats…", filesChecked: 0, filesTotal: paths.count))
             let list = root.appendingPathComponent("scan-\(UUID().uuidString).txt")
             defer { try? fm.removeItem(at: list) }
             try paths.joined(separator: "\n").write(to: list, atomically: true, encoding: .utf8)
             try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: list.path)
-            let result = try runner.run(clam.appendingPathComponent("Helpers/clamscan"), ["--cvdcertsdir=" + clam.appendingPathComponent("Resources/ClamAV/etc/certs").path, "--database=" + database.path, "--file-list=" + list.path, "--infected", "--no-summary", "--stdout", "--max-filesize=100M", "--max-scansize=200M", "--follow-file-symlinks=0", "--follow-dir-symlinks=0", "--alert-exceeds-max=yes"], timeout: 900, environment: ["CVD_CERTS_DIR": clam.appendingPathComponent("Resources/ClamAV/etc/certs").path])
+            let result = try runner.run(clam.appendingPathComponent("Helpers/clamscan"), ["--cvdcertsdir=" + clam.appendingPathComponent("Resources/ClamAV/etc/certs").path, "--database=" + database.path, "--file-list=" + list.path, "--stdout", "--max-filesize=100M", "--max-scansize=200M", "--follow-file-symlinks=0", "--follow-dir-symlinks=0", "--alert-exceeds-max=yes"], timeout: 900, environment: ["CVD_CERTS_DIR": clam.appendingPathComponent("Resources/ClamAV/etc/certs").path], onOutput: { tracker.receive($0) })
+            tracker.finish()
             let text = String(decoding: result.data, as: UTF8.self)
             for line in text.split(separator: "\n") where line.hasSuffix(" FOUND") {
                 guard let divider = line.range(of: ": ", options: .backwards) else { continue }
                 let path = String(line[..<divider.lowerBound]); guard candidates.contains(path) else { continue }
                 let signature = String(line[divider.upperBound...].dropLast(6))
-                if signature.hasPrefix("Heuristics.Limits.Exceeded") { truncated = true; continue }
+                if signature.hasPrefix("Heuristics.Limits.Exceeded") { truncated = true; skipped += 1; continue }
                 let heuristic = signature.hasPrefix("Heuristics.") || signature.hasPrefix("PUA.")
                 let finding = Finding(path: path, title: URL(fileURLWithPath: path).lastPathComponent, category: "Malware scan", level: heuristic ? .review : .threat,
                     explanation: heuristic ? "The scanner found a potentially unwanted or suspicious pattern. Review it before making changes." : "This file matched a known-threat signature. Quarantine it if supported, or review its location with care.", evidence: ["ClamAV signature: " + signature], action: (path.hasPrefix(NSHomeDirectory() + "/Downloads/") || path.hasPrefix(NSHomeDirectory() + "/Desktop/")) ? .quarantine : .reveal, signature: signature)
                 findings.append(finding); local[finding.id] = LocalItem(path: path, sha256: try? fileSHA256(URL(fileURLWithPath: path)))
             }
-            coverage.malware = result.status <= 1 && !truncated ? "complete" : "partial"
+            coverage.filesChecked = tracker.checked
+            coverage.skippedFiles = skipped; coverage.inaccessibleLocations = inaccessible
+            if tracker.checked < paths.count { truncated = true }
+            coverage.malware = result.status == 0 || result.status == 1 ? (truncated ? "partial" : "complete") : "partial"
+            if paths.isEmpty { coverage.malware = "unavailable"; coverage.limitations.append("No accessible files were selected for the malware check. Check folder access before trying again.") }
+            if skipped > 0 { coverage.limitations.append("At least \(skipped) files or folders were outside this quick check’s size, depth or item limits. Repeating the same scan will not expand these limits.") }
+            if inaccessible > 0 { coverage.limitations.append("\(inaccessible) locations could not be read. Enable Full Disk Access and reopen IRIS before retrying.") }
             if result.status > 1 || truncated { coverage.limitations.append("Some files were inaccessible, too large, or outside this scan's limits. They have not been marked safe.") }
         } catch is CancellationError { throw CancellationError() }
         catch { coverage.malware = "unavailable"; coverage.limitations.append(error.localizedDescription) }

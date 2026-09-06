@@ -1,51 +1,39 @@
-# IRIS browser companion store listing
+# IRIS browser companion 0.2.0 store update
 
-Status: submitted to Chrome Web Store review on September 5, 2026. Publication is staged for final store-install verification after approval. Extension ID: `aeamoplfjgalmokafhkcapgpbofinmfg`. No approved public listing yet.
-
-## Name
-
-IRIS — Your browser guardian companion
+The existing item aeamoplfjgalmokafhkcapgpbofinmfg has published version 0.1.0. This document describes the 0.2.0 release candidate, not the currently distributed package.
 
 ## Summary
-
-Understand extension access and turn off extensions you no longer need. Your review stays in this browser.
+Review extension access, block known crypto-scam sites, and get clear next steps. Security checks run locally.
 
 ## Description
+IRIS is your browser guardian companion from HANS Society Foundation.
 
-A simpler way to review what your browser extensions can access.
+• Review extension access. Keep the tools you recognize, turn off ones you no longer need, and undo supported changes.
+• Enable extension-change alerts. A toolbar badge highlights extensions that need review.
+• Enable known-scam protection to block listed crypto-phishing hostnames and their subdomains. A warning guides you to your IRIS dashboard, a Mac scan, or wallet-approval review if needed.
+• Check a link locally, or optionally review up to 5,000 browsing entries from the last seven days.
+• Connect to your IRIS web dashboard to see extension reviews and scam-warning activity alongside your Mac companion.
 
-IRIS brings extension permissions into one clear review, explains what they mean, and helps you reduce access you no longer need.
+ScamSniffer's open-source threat data updates daily when protection is on, but its free feed has a seven-day delay. It can miss new scams and contain false positives. No match is not a safety verdict. A blocked navigation is not proof of infection, and wallet-approval checks cannot reverse transfers or every signature.
 
-• See which extensions request broad website, clipboard, history or other sensitive access.
-• Keep extensions you recognize. IRIS remembers your choice for 30 days and asks you to review again if the version or reported permissions change.
-• Turn off extensions from the companion. Restore supported changes when you need them again.
-• Optionally connect your review to the IRIS web dashboard in the same browser. No separate account or Mac download is required for browser checks.
+IRIS does not read page contents, clipboard text, passwords or wallet secrets. History permission is optional and used only when you start that check. Matched history hostnames stay locally. Live scam warnings retain hostname/time only; normal navigation is not saved. An optional 30-day connection shares extension reports, protection state and warning activity directly with app.undercoveriris.io in this browser, plus recent-history aggregate counts. No scan data is uploaded to an IRIS server. Disconnect at any time.
 
-Your review runs locally. IRIS does not read browsing history, page contents, passwords or copied text. Permission explanations describe possible access; they are not a malware verdict. This companion does not scan extension code or certify an extension is safe. Your browser may require confirmation for changes, and organization-managed extensions may need an administrator.
-
-An optional connection lets app.undercoveriris.io read extension names and permission summaries directly in your browser for 30 days. The report is not uploaded to an IRIS server. You can disconnect in either interface.
-
-IRIS is a project of HANS Society Foundation. Open-source software under GPLv3.
-Support: support@joinhans.io
+Open-source GPLv3 software. Support: support@joinhans.io.
 Privacy: https://app.undercoveriris.io/device-privacy
 Source: https://github.com/byron0x/iris-mac-companion/tree/main/browser-extension
 
 ## Single purpose
-
-Help users review and reduce the access held by their installed browser extensions.
+Help users reduce browser security risks from extension access and known crypto-phishing sites, with understandable, locally performed checks and cleanup guidance.
 
 ## Permission justifications
+- management: installed-extension metadata and explicit user-chosen disable/restore actions in the extension UI. Websites cannot change other extensions.
+- storage: preferences, undo records, expiring dashboard consent and bounded security results/activity.
+- declarativeNetRequest: block top-level requests to known scam hostnames locally before the request reaches a site. Only block rules; no traffic bodies or page contents are read.
+- alarms: once-daily refresh of the fixed ScamSniffer public domain feed while protection is enabled.
+- OPTIONAL webNavigation: identify blocked navigations to show the IRIS warning and check up to 100 already-open tabs when the user enables protection. Save only matched hostname/time/status, not normal browsing.
+- OPTIONAL history: user-started local check of up to 5,000 entries from the past seven days. No background collection; no raw URL storage or upload.
 
-**management**: Read installed extension names, enabled status, installation type and reported API/website permissions to provide the local access review. Enable/disable operations occur only after the user clicks an action in the extension-owned review page. The connected website cannot enable, disable or uninstall extensions.
+## Data and remote-code disclosures
+Declare browsing-history/navigation handling and its limited local use plus explicit dashboard disclosure; do not claim the app never handles browsing data. Extension metadata is also disclosed. No advertising, sale, credit decisions or staff access. All executable code is packaged; the only downloaded feed is validated, size-bounded domain data, with no remote scripts or expressions. GitHub receives ordinary request metadata only.
 
-**storage**: Store local, version-and-permission-bound Keep choices, supported undo records and optional expiring website connection consent. No synchronized browser storage is used.
-
-**Remote code**: None. All executable code is packaged with the extension. No remote scripts, remote execution, content scripts or third-party runtime dependencies.
-
-**Website connection**: Only the top-level https://app.undercoveriris.io origin can communicate with the extension. Report disclosure requires the user's optional connection and rechecks consent after the asynchronous audit. Sharing happens directly within that browser profile, not through an inventory API or remote relay. Other extensions, frames and incognito contexts are rejected.
-
-## Store privacy questionnaire notes
-
-Answer according to the current store definitions. Disclose extension metadata and permission summaries plus the optional website disclosure. Do not claim that metadata never leaves the extension context or that this is an anonymous cloud malware service. No browsing history, website content, authentication details, financial information, location or personal communications are read by this extension.
-
-Screenshots use a fresh test profile with clearly labeled example extensions. They do not show a user's personal inventory. Verify the store-distributed package in Chrome, Brave and Edge before enabling the public installation link.
+Screenshots and review tests use harmless temporary profiles and a local HTTP fixture, never real scam navigation or personal browsing history.

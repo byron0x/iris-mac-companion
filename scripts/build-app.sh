@@ -17,12 +17,18 @@ else
   binary="$(swift build -c "$configuration" --show-bin-path)/IRISCompanion"
 fi
 bundle="$PWD/dist/IRIS Mac Companion.app"
+if [[ "$configuration" == "debug" ]]; then bundle="$PWD/dist/IRIS Mac Companion Development.app"; fi
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$binary" "$bundle/Contents/MacOS/IRISCompanion"
 cp Resources/Info.plist "$bundle/Contents/Info.plist"
+if [[ "$configuration" == "debug" ]]; then
+  /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier io.undercoveriris.companion.development' "$bundle/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName IRIS Development' "$bundle/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c 'Delete :CFBundleURLTypes' "$bundle/Contents/Info.plist"
+fi
 cp Resources/IRISAvatar.jpg "$bundle/Contents/Resources/"
 cp Resources/HANSIcon.png Resources/IRIS.icns "$bundle/Contents/Resources/"
 cp LICENSE THIRD_PARTY_NOTICES.md "$bundle/Contents/Resources/"
-python3 scripts/prepare-clamav.py
+IRIS_APP_BUNDLE="$bundle" python3 scripts/prepare-clamav.py
 codesign --force --sign - "$bundle"
 printf 'Local development app: %s\n' "$bundle"
