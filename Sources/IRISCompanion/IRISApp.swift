@@ -6,12 +6,38 @@ import Security
 @MainActor final class CompanionDelegate: NSObject, NSApplicationDelegate {
     static var model: CompanionModel?
     static var showWindow: (() -> Void)?
+    private var forwardingURLs = false
+    static func existingInstance() -> NSRunningApplication? {
+        guard let id = Bundle.main.bundleIdentifier else { return nil }
+        let current = NSRunningApplication.current
+        return NSRunningApplication.runningApplications(withBundleIdentifier: id)
+            .filter { app in
+                guard app.processIdentifier != getpid(), !app.isTerminated, samePublisher(app) else { return false }
+                let earlier = app.launchDate ?? .distantFuture
+                let ours = current.launchDate ?? .distantPast
+                return earlier < ours || (earlier == ours && app.processIdentifier < getpid())
+            }.min { lhs, rhs in
+                let a = lhs.launchDate ?? .distantFuture, b = rhs.launchDate ?? .distantFuture
+                return a == b ? lhs.processIdentifier < rhs.processIdentifier : a < b
+            }
+    }
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Launch Services and an updater can reopen the app at the same time.
+        // Allow the initial URL event to arrive before treating this as a plain reopen.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            guard self?.forwardingURLs == false, let existing = Self.existingInstance(), let target = existing.bundleURL else { return }
+            let configuration = NSWorkspace.OpenConfiguration(); configuration.createsNewApplicationInstance = false
+            NSWorkspace.shared.openApplication(at: target, configuration: configuration) { _, error in
+                DispatchQueue.main.async { if error == nil { NSApp.terminate(nil) } }
+            }
+        }
+    }
     func application(_ application: NSApplication, open urls: [URL]) {
         // A signed release in Downloads can also be registered for the URL scheme.
         // Forward directly to the already running, same-team app; never broadcast pairing secrets.
-        if let id = Bundle.main.bundleIdentifier,
-           let existing = NSRunningApplication.runningApplications(withBundleIdentifier: id).filter({ $0.processIdentifier != getpid() && ($0.launchDate ?? .distantFuture) < (NSRunningApplication.current.launchDate ?? .distantPast) && Self.samePublisher($0) }).min(by: { ($0.launchDate ?? .distantFuture) < ($1.launchDate ?? .distantFuture) }),
+        if let existing = Self.existingInstance(),
            let target = existing.bundleURL {
+            forwardingURLs = true
             let configuration = NSWorkspace.OpenConfiguration(); configuration.createsNewApplicationInstance = false
             NSWorkspace.shared.open(urls, withApplicationAt: target, configuration: configuration) { _, error in
                 DispatchQueue.main.async { if error == nil { NSApp.terminate(nil) } }
@@ -36,16 +62,21 @@ import Security
     @NSApplicationDelegateAdaptor(CompanionDelegate.self) private var delegate
     @StateObject private var model: CompanionModel
     @StateObject private var updater: CompanionUpdater
+    private let secondary: Bool
     init() {
         if CommandLine.arguments.contains("--verify-review-fixtures") {
             do { try FindingInspector.verifyFixtures(); exit(0) }
             catch { print("Local review fixture verification failed."); exit(1) }
         }
-        let value = CompanionModel(); _model = StateObject(wrappedValue: value); CompanionDelegate.model = value
+        secondary = CompanionDelegate.existingInstance() != nil
+        let value = CompanionModel(initialize: !secondary); _model = StateObject(wrappedValue: value); CompanionDelegate.model = value
         _updater = StateObject(wrappedValue: CompanionUpdater(model: value))
     }
     var body: some Scene {
-        Window("IRIS · Your Mac guardian companion", id: "guardian") { GuardianView(model: model, updater: updater).onAppear { updater.start() } }
+        Window("IRIS · Your Mac guardian companion", id: "guardian") {
+            if secondary { ProgressView("Opening your running IRIS companion…").padding(40) }
+            else { GuardianView(model: model, updater: updater).onAppear { updater.start() } }
+        }
             .defaultSize(width: 1000, height: 780)
             .commands {
                 CommandGroup(after: .appInfo) {

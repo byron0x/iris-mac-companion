@@ -46,7 +46,8 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
     private var seenCommands: [String] = UserDefaults.standard.stringArray(forKey: "processedCommands") ?? []
     private let relaySession: URLSession = { let config = URLSessionConfiguration.ephemeral; config.httpCookieStorage = nil; config.httpShouldSetCookies = false; return URLSession(configuration: config) }()
     private let endpoint = URL(string: "https://app.undercoveriris.io/api/device")!
-    init() {
+    init(initialize: Bool = true) {
+        guard initialize else { return }
         try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         do { if let data = try Keychain.load("connection"), let value = try? JSONDecoder().decode(Connection.self, from: data), value.expiresAt > Date().timeIntervalSince1970 * 1000 { connection = value; connected = true } } catch { keychainLocked = true }
         loadTrust(); loadScan(); refreshReceipts(); startPolling()
