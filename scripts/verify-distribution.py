@@ -17,7 +17,7 @@ assert info["CFBundleIdentifier"] == "io.undercoveriris.companion"
 assert info["CFBundleShortVersionString"] == args.version
 assert info["IRISSigningTeam"] == args.team_id
 assert info["LSMinimumSystemVersion"] == "13.0"
-requirement = ('anchor apple generic and identifier "io.undercoveriris.companion" '
+requirement = ('=anchor apple generic and identifier "io.undercoveriris.companion" '
                f'and certificate leaf[subject.OU] = "{args.team_id}"')
 subprocess.run(["codesign", "--verify", "--deep", "--strict", "-R", requirement, str(bundle)], check=True)
 signature = subprocess.run(["codesign", "-d", "--verbose=4", str(bundle)], check=True, capture_output=True, text=True)
