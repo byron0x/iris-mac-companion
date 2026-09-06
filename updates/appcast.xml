@@ -1,8 +1,27 @@
-<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+<?xml version="1.0" standalone="yes"?>
+<!-- sparkle-sign-warning:
 IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
---><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+-->
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>IRIS Mac Companion</title>
+        <item>
+            <title>0.4.0</title>
+            <pubDate>Sun, 06 Sep 2026 18:16:14 -0300</pubDate>
+            <link>https://app.undercoveriris.io/device</link>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="plain-text"><![CDATA[More clarity. More control.
+
+• Understand uncertain findings with local evidence, publisher details and clear next steps.
+• Quarantine supported files, restore them, or permanently remove quarantined files after confirmation.
+• Connect your IRIS account for one monthly manual scan on Free or unlimited scans on Pro. Cleanup and updates stay available on both plans.
+• Pro can enable background checks of changes in Downloads, Desktop and user LaunchAgents while IRIS is running. This does not monitor every file or block execution.
+• A brighter purple and mint design, with saved results and trusted choices preserved.
+]]></description>
+            <enclosure url="https://github.com/byron0x/iris-mac-companion/releases/download/v0.4.0/IRIS-Mac-0.4.0.zip" length="36750754" type="application/octet-stream" sparkle:edSignature="1spH++KBchw9QKeIesgzm5uLSJqlRHgdSx09M0TVSt8TQB2SaQrWLjQsRQQfxJ4xiuLint5/OXwn9V15Z0CABQ=="/>
+        </item>
         <item>
             <title>0.3.1</title>
             <pubDate>Sun, 06 Sep 2026 13:57:43 -0300</pubDate>
@@ -18,10 +37,11 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
 • Verifies updates before unpacking them and waits for an active scan to finish before restarting.
 • Keeps your saved review, trusted items and dashboard connection.
 ]]></description>
-            <enclosure url="https://github.com/byron0x/iris-mac-companion/releases/download/v0.3.1/IRIS-Mac-0.3.1.zip" length="36586515" type="application/octet-stream" sparkle:edSignature="yRLYCRkHjtDy+YFGejwbHWrLZr7fhNynpV5VTqI2dG44G7P8K1j5uB2KS4iBMrPG+5GpfrmhU1Nvjt7cm/43DA=="></enclosure>
+            <enclosure url="https://github.com/byron0x/iris-mac-companion/releases/download/v0.3.1/IRIS-Mac-0.3.1.zip" length="36586515" type="application/octet-stream" sparkle:edSignature="yRLYCRkHjtDy+YFGejwbHWrLZr7fhNynpV5VTqI2dG44G7P8K1j5uB2KS4iBMrPG+5GpfrmhU1Nvjt7cm/43DA=="/>
         </item>
     </channel>
-</rss><!-- sparkle-signatures:
-edSignature: aoygOvKASSKKNi14ELd6gaoGXYxvOghHwQ4k13uiLuA0R8ZLbQeO+KwsvTCslWTDC81KapGi4U67IsyQCtv+BQ==
-length: 1687
+</rss>
+<!-- sparkle-signatures:
+edSignature: KIqAHxs6iUdFOUle3r1UrQbjcXTkVAqnZMtL+RBgM1St9xGjOtwb0fcpNHzR65nJt3fbcrptcrdwwVX4YQuvDg==
+length: 3062
 -->
