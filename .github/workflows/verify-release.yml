@@ -13,6 +13,10 @@ permissions:
   contents: read
 jobs:
   download:
+    # GitHub exposes draft releases only to tokens with repository write access.
+    # This manual job only reads assets; do not persist that token in the checkout.
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -24,6 +28,8 @@ jobs:
       EXPECTED_SHA256: ${{ inputs.sha256 }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Download the exact release archive
         env:
           GH_TOKEN: ${{ github.token }}
