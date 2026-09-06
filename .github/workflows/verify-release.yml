@@ -53,4 +53,12 @@ jobs:
       - name: Check local trust against changed fixture files
         run: '"dist/IRIS Mac Companion.app/Contents/MacOS/IRISCompanion" --verify-review-fixtures'
       - name: Verify reversible cleanup, cancellation and encrypted protocol
-        run: swift run IRISCoreChecks
+        run: |
+          swift build --product IRISCoreChecks
+          check_binary="$(swift build --show-bin-path)/IRISCoreChecks"
+          # This is the runner's newly compiled test executable, not the release app.
+          codesign --verify --verbose=4 "$check_binary" || true
+          xattr -l "$check_binary"
+          codesign --force --sign - "$check_binary"
+          codesign --verify --strict --verbose=2 "$check_binary"
+          "$check_binary"
