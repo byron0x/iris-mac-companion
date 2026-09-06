@@ -2,7 +2,7 @@
 
 A free, open-source Mac companion for IRIS by HANS Society Foundation. It helps people understand startup software and active keyboard listeners, check common download locations against malware signatures and perform supported, reversible cleanup. Dark purple SwiftUI interface; macOS 13+; Apple silicon and Intel.
 
-**Mac 0.2.0 is available:** [download the signed, Apple-notarized release](https://github.com/byron0x/iris-mac-companion/releases/tag/v0.2.0). Unzip it, move IRIS Mac Companion into Applications, and open it. Connect through the [IRIS dashboard](https://app.undercoveriris.io/device). The exact download passed trust and scanner-fixture checks on fresh Intel and Apple silicon runners; [verification results](https://github.com/byron0x/iris-mac-companion/actions/runs/34033932546).
+**Mac releases:** use the latest verified download linked from the [IRIS dashboard](https://app.undercoveriris.io/device). Unzip it, move IRIS Mac Companion into Applications, and open it. Version 0.3.1 adds signed in-app updates; older installed versions need this one manual replacement.
 
 Version 0.2 adds a large scan action, six-stage progress and selected-file counters, explicit Full Disk Access guidance with a draggable app icon and Finder shortcut, and FileVault/firewall/Gatekeeper status. Startup permission failures are distinguished from other scanner failures. Cancelled scans preserve the previous report.
 
@@ -66,3 +66,11 @@ IRIS and HANS names and logos identify HANS Society's project. The software lice
 The Mac companion uses one main window, routes connection links to an already running signed copy, and no longer opens an extra dashboard tab after pairing. Common Terminal setup files have plain-language context; verified 1Password components show publisher-based context. User trust decisions are encrypted locally and bound to the file/signing snapshot and relevant access evidence. Changed items return for review; known-threat and malware-pattern findings cannot be trusted away.
 
 The browser companion has one explicit scan for extensions and the last seven days of history (up to 5,000 entries). Optional history permission is requested only by the user's click. Progress and results survive closing the review; only counts/status reach the connected web page. Trust/disable/restore and Chrome-confirmed removal remain local. No extension-malware verdict is inferred from permissions.
+
+## Signed updates (Mac 0.3.1+)
+
+The companion checks for app updates daily by default. **IRIS Mac Companion → Check for Updates…**, the menu-bar menu, and **About** all offer a manual check. About also has persistent switches for automatic checks and optional automatic downloads. The updater defers relaunch while a scan is active. It uses the official, checksum-pinned Sparkle 2.9.6 framework and validates both the Ed25519-signed feed and archive before extraction. Scan reports are not sent in update requests; Sparkle system profiling is disabled.
+
+The update key is stored in the build machine's Keychain under Sparkle account `iris-mac-updates`. Keep that key and the Apple Developer ID private key available for future releases; never put either in Git. Only the public Ed25519 key is in Info.plist. After notarization, generate the feed with `scripts/publish-appcast.sh`, verify the draft release on fresh Intel and Apple silicon machines, publish the exact ZIP and corresponding sources, then commit/push `updates/appcast.xml`. Do not edit signed XML by hand.
+
+The release ZIP excludes build-machine extended attributes and AppleDouble sidecars. Version 0.3.0 exposed a packaging bug: Archive Utility could materialize metadata next to framework symlinks, invalidating the resource seal. `verify-archive.py` rejects these archives before upload, and CI verifies both `ditto` and ordinary ZIP extraction. Also test a browser-downloaded copy through Archive Utility with quarantine preserved; command-line extraction alone missed the original issue.

@@ -35,21 +35,29 @@ import Security
 @main struct IRISCompanionApp: App {
     @NSApplicationDelegateAdaptor(CompanionDelegate.self) private var delegate
     @StateObject private var model: CompanionModel
+    @StateObject private var updater: CompanionUpdater
     init() {
         if CommandLine.arguments.contains("--verify-review-fixtures") {
             do { try FindingInspector.verifyFixtures(); exit(0) }
             catch { print("Local review fixture verification failed."); exit(1) }
         }
         let value = CompanionModel(); _model = StateObject(wrappedValue: value); CompanionDelegate.model = value
+        _updater = StateObject(wrappedValue: CompanionUpdater(model: value))
     }
     var body: some Scene {
-        Window("IRIS · Your Mac guardian companion", id: "guardian") { GuardianView(model: model) }
+        Window("IRIS · Your Mac guardian companion", id: "guardian") { GuardianView(model: model, updater: updater).onAppear { updater.start() } }
             .defaultSize(width: 1000, height: 780)
+            .commands {
+                CommandGroup(after: .appInfo) {
+                    Button("Check for Updates…") { updater.check() }.disabled(!updater.canCheck)
+                }
+            }
         MenuBarExtra("IRIS", systemImage: "shield.lefthalf.filled") {
             Button("Open IRIS") { CompanionDelegate.showWindow?(); NSApp.activate(ignoringOtherApps: true) }
             Button("Scan my Mac") { model.startScan() }.disabled(model.busy)
             Button("Open web dashboard") { model.openWeb() }
             Divider()
+            Button("Check for Updates…") { updater.check() }.disabled(!updater.canCheck)
             Button("Quit IRIS") { NSApp.terminate(nil) }
         }
     }
@@ -57,6 +65,7 @@ import Security
 struct GuardianView: View {
     @Environment(\.openWindow) private var openWindow
     @ObservedObject var model: CompanionModel
+    @ObservedObject var updater: CompanionUpdater
     @State private var section = "Review"
     @State private var expandedFindings: [String: Bool] = [:]
     private let violet = Color(red: 0.76, green: 0.64, blue: 1)
@@ -272,11 +281,13 @@ struct GuardianView: View {
     var about: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Built to be on your side.").font(.largeTitle)
+            CompanionUpdateSettings(updater: updater)
             Text("IRIS Mac Companion is free, open-source software from HANS Society Foundation, licensed under GPLv3. Scanning happens locally. The web dashboard receives an encrypted report only after you connect it.")
             Link("Startup scanning: KnockKnock by Objective-See Foundation ↗", destination: URL(string: "https://objective-see.org/products/knockknock.html")!)
             Link("Keyboard privacy: adapted from ReiKey by Objective-See Foundation ↗", destination: URL(string: "https://objective-see.org/products/reikey.html")!)
             Link("Known-threat scanning: ClamAV by Cisco Talos ↗", destination: URL(string: "https://www.clamav.net/")!)
             Text("These independent projects do not endorse IRIS. KnockKnock is downloaded unchanged; ClamAV is bundled with adjusted library paths and its source is supplied with each release. IRIS adapts ReiKey's event-tap enumeration into a local, on-demand keyboard review. VirusTotal is not contacted.").foregroundStyle(.secondary)
+            Link("Verified app updates: Sparkle ↗", destination: URL(string: "https://sparkle-project.org/")!)
             Link("Source code and licenses ↗", destination: URL(string: "https://github.com/byron0x/iris-mac-companion")!)
             Link("Privacy and connection details ↗", destination: URL(string: "https://app.undercoveriris.io/device-privacy")!)
             Link("Help: support@joinhans.io", destination: URL(string: "mailto:support@joinhans.io")!)

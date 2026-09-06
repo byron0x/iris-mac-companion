@@ -1,0 +1,7 @@
+A smoother start and easier updates.
+
+• Fixes a ZIP packaging issue that could show a “damaged app” warning after unpacking the download.
+• Adds Check for Updates to the IRIS menu, menu-bar companion and About page.
+• Checks for signed updates automatically, with an optional automatic-download setting.
+• Verifies updates before unpacking them and waits for an active scan to finish before restarting.
+• Keeps your saved review, trusted items and dashboard connection.

@@ -39,9 +39,15 @@ jobs:
           mkdir -p dist
           gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "IRIS-Mac-${RELEASE_TAG#v}.zip" --dir dist
           printf '%s  %s\n' "$EXPECTED_SHA256" "dist/IRIS-Mac-${RELEASE_TAG#v}.zip" | shasum -a 256 --check
+          python3 scripts/verify-archive.py "dist/IRIS-Mac-${RELEASE_TAG#v}.zip"
           ditto -x -k "dist/IRIS-Mac-${RELEASE_TAG#v}.zip" dist
       - name: Check Apple trust and both supported architectures
         run: python3 scripts/verify-distribution.py 'dist/IRIS Mac Companion.app' --team-id CDA39J55GH --version "${RELEASE_TAG#v}"
+      - name: Verify ordinary ZIP extraction too
+        run: |
+          mkdir -p dist/ordinary-extraction
+          unzip -q "dist/IRIS-Mac-${RELEASE_TAG#v}.zip" -d dist/ordinary-extraction
+          python3 scripts/verify-distribution.py 'dist/ordinary-extraction/IRIS Mac Companion.app' --team-id CDA39J55GH --version "${RELEASE_TAG#v}"
       - name: Exercise the downloaded scanner with harmless fixtures
         run: python3 scripts/verify-engine.py
       - name: Check local trust against changed fixture files

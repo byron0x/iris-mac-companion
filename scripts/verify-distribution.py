@@ -17,6 +17,13 @@ assert info["CFBundleIdentifier"] == "io.undercoveriris.companion"
 assert info["CFBundleShortVersionString"] == args.version
 assert info["IRISSigningTeam"] == args.team_id
 assert info["LSMinimumSystemVersion"] == "13.0"
+assert not list(bundle.rglob("._*")), "Extracted app contains unsigned AppleDouble metadata"
+if tuple(map(int, args.version.split('.'))) >= (0, 3, 1):
+    assert info["SUPublicEDKey"] == "PocwmuvcZk1XcKZSHTJXZV4dcQUMZq4JhBeQm37NtVE="
+    assert info["SUFeedURL"] == "https://raw.githubusercontent.com/byron0x/iris-mac-companion/main/updates/appcast.xml"
+    assert info["SURequireSignedFeed"] and info["SUVerifyUpdateBeforeExtraction"]
+    assert (bundle / "Contents/Frameworks/Sparkle.framework/Sparkle").is_file()
+    assert (bundle / "Contents/Resources/Licenses/Sparkle.txt").is_file()
 requirement = ('=anchor apple generic and identifier "io.undercoveriris.companion" '
                f'and certificate leaf[subject.OU] = "{args.team_id}"')
 subprocess.run(["codesign", "--verify", "--deep", "--strict", "-R", requirement, str(bundle)], check=True)

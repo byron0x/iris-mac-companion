@@ -14,14 +14,20 @@ archive="$PWD/dist/IRIS-Mac-$version.zip"
 team="${DEVELOPER_ID_APPLICATION##*(}"
 team="${team%)}"
 /usr/libexec/PlistBuddy -c "Add :IRISSigningTeam string $team" "$bundle/Contents/Info.plist"
+# Sparkle has nested executables, XPC services and an updater app. Sign inside out.
+python3 scripts/sign-sparkle.py "$bundle/Contents/Frameworks/Sparkle.framework" "$DEVELOPER_ID_APPLICATION"
 while IFS= read -r -d '' file; do
-  if /usr/bin/file "$file" | /usr/bin/grep -q 'Mach-O'; then
+  if [[ "$file" != */Sparkle.framework/* ]] && /usr/bin/file "$file" | /usr/bin/grep -q 'Mach-O'; then
     codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$file"
   fi
 done < <(find "$bundle/Contents/Frameworks" "$bundle/Contents/Helpers" -type f -print0)
 codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$bundle"
 codesign --verify --deep --strict "$bundle"
-ditto -c -k --keepParent "$bundle" "$archive"
+# Sidecars for extended attributes can survive Archive Utility extraction of
+# symlinks and invalidate the sealed bundle. A release needs only file content,
+# modes and symlinks; the stapled ticket is Contents/CodeResources.
+ditto -c -k --keepParent --norsrc --noextattr --noacl "$bundle" "$archive"
+python3 scripts/verify-archive.py "$archive"
 xcrun notarytool submit "$archive" --keychain-profile "$NOTARY_KEYCHAIN_PROFILE" --wait --output-format json > dist/notarization.json
 python3 - <<'PY'
 import json
@@ -31,6 +37,10 @@ PY
 xcrun stapler staple "$bundle"
 xcrun stapler validate "$bundle"
 spctl --assess --type execute --verbose=2 "$bundle"
-ditto -c -k --keepParent "$bundle" "$archive"
+# Sidecars for extended attributes can survive Archive Utility extraction of
+# symlinks and invalidate the sealed bundle. A release needs only file content,
+# modes and symlinks; the stapled ticket is Contents/CodeResources.
+ditto -c -k --keepParent --norsrc --noextattr --noacl "$bundle" "$archive"
+python3 scripts/verify-archive.py "$archive"
 (cd dist && shasum -a 256 "IRIS-Mac-$version.zip" > "IRIS-Mac-$version.zip.sha256")
 printf 'Verified release archive: %s\n' "$archive"

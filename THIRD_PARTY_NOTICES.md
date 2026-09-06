@@ -42,3 +42,12 @@ Publish the complete corresponding IRIS source for each binary release, includin
 ## Browser threat data — ScamSniffer
 
 Browser companion 0.2 includes the GPLv3 ScamSniffer Web3 Scam Database, initially pinned to commit `1bc0b0354537dc7c3511f3d26ca03d2e7504b67e`. Attribution, source hash and the unmodified license are included in `browser-extension/data`. Optional protection refreshes domain data from the same project's fixed public GitHub feed; its seven-day delay is disclosed. IRIS does not claim endorsement or real-time coverage. Source: https://github.com/scamsniffer/scam-database
+
+## Sparkle 2.9.6
+
+IRIS uses the Sparkle project's MIT-licensed update framework. The official universal binary artifact is pinned in Package.swift to the SHA-256 published by Sparkle. Its complete copyright, license and bundled component notices are included in Resources/Licenses/Sparkle.txt and in the app. IRIS signs the embedded framework and its helpers with its Developer ID for hardened-runtime compatibility; Sparkle source code is unchanged.
+
+- Project and documentation: https://sparkle-project.org/
+- Exact source: https://github.com/sparkle-project/Sparkle/tree/2.9.6
+- Binary artifact SHA-256: `8d5fb41d960b43f4a68aa14126bf62b098544ec8d191cdcc73eb14e63a8e7606`
+- App updates and their feed require Ed25519 signatures. The private update key remains in the publisher's Keychain; only its public key ships with IRIS.

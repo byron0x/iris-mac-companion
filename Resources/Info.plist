@@ -7,10 +7,18 @@
 <key>CFBundleExecutable</key><string>IRISCompanion</string>
 <key>CFBundleIconFile</key><string>IRIS.icns</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.3.0</string>
-<key>CFBundleVersion</key><string>3</string>
+<key>CFBundleShortVersionString</key><string>0.3.1</string>
+<key>CFBundleVersion</key><string>4</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>IRIS encrypted Mac connection</string><key>CFBundleURLSchemes</key><array><string>iris-companion</string></array></dict></array>
 <key>NSHumanReadableCopyright</key><string>Copyright © 2026 HANS Society Foundation. GPL-3.0-only.</string>
+<key>SUPublicEDKey</key><string>PocwmuvcZk1XcKZSHTJXZV4dcQUMZq4JhBeQm37NtVE=</string>
+<key>SUFeedURL</key><string>https://raw.githubusercontent.com/byron0x/iris-mac-companion/main/updates/appcast.xml</string>
+<key>SUEnableAutomaticChecks</key><true/>
+<key>SUScheduledCheckInterval</key><integer>86400</integer>
+<key>SUAutomaticallyUpdate</key><false/>
+<key>SUVerifyUpdateBeforeExtraction</key><true/>
+<key>SURequireSignedFeed</key><true/>
+<key>SUSendProfileInfo</key><false/>
 </dict></plist>
