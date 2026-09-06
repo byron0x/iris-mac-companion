@@ -1,6 +1,6 @@
 # IRIS — Your browser guardian companion
 
-Manifest V3 companion for Chrome, Brave and Edge. Version 0.1.0 is published at https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg. Version 0.2.0 is the new release candidate; it requires a store update and review before these new features reach installed users.
+Manifest V3 companion for Chrome, Brave and Edge. Version 0.1.0 is published at https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg. Version 0.2.0 was submitted for Chrome Web Store review on September 6, 2026, with automatic publication after approval. The new features below reach installed users after that approval and update.
 
 ## Browser security in one place
 
@@ -29,6 +29,6 @@ python3 browser-extension/package.py
 
 The web repository's `tests/browser-companion.e2e.cjs` tests the real Chromium extension and a harmless fixture, with production traffic blocked. Release checks also exercise optional history in an isolated profile and verify the complete phishing block → warning → activity → opt-out flow against a local HTTP server. Never use a developer's browsing history or visit live scam sites for tests.
 
-Upload `dist/IRIS-Browser-Companion-0.2.0.zip` to the existing store item, update permissions/privacy disclosures and screenshots, and complete review. Keep `store/release.json` at the actually published version until Google serves the new package. The install link and extension ID remain unchanged.
+The 0.2.0 ZIP, updated permissions/privacy disclosures, reviewer instructions and four current screenshots are submitted to the existing store item. Keep `store/release.json` at the actually published version until Google serves the new package. The install link and extension ID remain unchanged.
 
 Copyright © 2026 HANS Society Foundation. GPL-3.0-only. ScamSniffer provides the GPLv3 threat data; Objective-See provides the attributed Mac components. Neither independently endorses IRIS. Support: support@joinhans.io.

@@ -7,5 +7,20 @@
   "sha256": "becf38bffaaf86edc5ed32f38643ad6b56ba27ba17bf6bf8d2ec2d88c8df62d7",
   "publicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAphSeddxi7tVJiSlESwrZFp+FkK5UwAxpC9OTLzhqP1YmwXql+atmwatG2dgeFmk4/DIWnMqU6yQzGKSBWwtRQSncP0k2W5OhcUMJf5rWMxmg1cKc80Ko58MdINDIHC++p5pIDPojtL9Ut79HWNA9/6qy60TtaOZIHgkWgyLxAYn1K13cwCOH5LiZcZWorBn9jiNq4eOwj/gX3+J0++QVOdZjyM3yLhjSiDhYPpSOV/xTtO2FtMh/Ua4JdhiToBEkydGrM4wwhKte1kocmPbdIwLKHXoKsyWhtaKvu8tz1xplczYqMu5G5YHO6cex7kO6IZ7bH9FK1oh7mG1ycq1CXQIDAQAB",
   "publishedOn": "2026-09-06",
-  "storeUrl": "https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg"
+  "storeUrl": "https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg",
+  "pendingUpdate": {
+    "version": "0.2.0",
+    "status": "submitted-for-review",
+    "submittedOn": "2026-09-06",
+    "automaticPublication": true,
+    "sha256": "8149427e9c13d6da4ac381eb35fb2deb6a9f743c6f5a7cf42b51c147fcf2778a",
+    "sourceCommit": "1187fad",
+    "features": [
+      "known-scam blocking and already-open warnings",
+      "daily local threat-list refresh",
+      "optional recent-history check",
+      "extension-change alerts",
+      "web dashboard security activity"
+    ]
+  }
 }
