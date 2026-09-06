@@ -16,7 +16,7 @@ IRIS is your browser guardian companion from HANS Society Foundation.
 
 ScamSniffer's open-source threat data updates daily when protection is on, but its free feed has a seven-day delay. It can miss new scams and contain false positives. No match is not a safety verdict. A blocked navigation is not proof of infection, and wallet-approval checks cannot reverse transfers or every signature.
 
-IRIS does not read page contents, clipboard text, passwords or wallet secrets. History permission is optional and used only when you start that check. Matched history hostnames stay locally. Live scam warnings retain hostname/time only; normal navigation is not saved. An optional 30-day connection shares extension reports, protection state and warning activity directly with app.undercoveriris.io in this browser, plus recent-history aggregate counts. No scan data is uploaded to an IRIS server. Disconnect at any time.
+IRIS does not read page contents, clipboard text, passwords or wallet secrets. History permission is optional and used only when you start that check. Matched history hostnames stay locally and expire after seven days. Live scam warnings retain hostname/time only; normal navigation is not saved. An optional 30-day connection shares extension reports, protection state and warning activity directly with app.undercoveriris.io in this browser, plus recent-history aggregate counts. No scan data is uploaded to an IRIS server. Disconnect at any time.
 
 Connect a Google or wallet account to start scans. Free includes one manual scan per calendar month (UTC). IRIS Pro ($10/month or $90/year, purchased on the IRIS website) includes unlimited scans and live scam / extension-change monitoring. Saved reviews, supported turn-off/restore/removal actions and local single-link lookups stay available on Free. Billing details are shown before checkout.
 
@@ -38,6 +38,6 @@ Help users reduce browser security risks from extension access and known crypto-
 - OPTIONAL history: user-started local check of up to 5,000 entries from the past seven days. No background collection; no raw URL storage or upload.
 
 ## Data and remote-code disclosures
-Declare browsing-history/navigation handling and its limited local use plus explicit dashboard disclosure; do not claim the app never handles browsing data. Extension metadata is also disclosed. No advertising, sale, credit decisions or staff access. All executable code is packaged; the only downloaded feed is validated, size-bounded domain data, with no remote scripts or expressions. GitHub receives ordinary request metadata only.
+Declare personally identifiable account identifiers, authentication credentials, and browsing-history/navigation handling and its limited local use plus explicit dashboard disclosure; do not claim the app never handles browsing data. Extension metadata is also disclosed. No advertising, sale, credit decisions or staff access. All executable code is packaged; the only downloaded feed is validated, size-bounded domain data, with no remote scripts or expressions. GitHub receives ordinary request metadata only.
 
 Screenshots and review tests use harmless temporary profiles and a local HTTP fixture, never real scam navigation or personal browsing history.

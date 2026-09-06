@@ -9,20 +9,19 @@
   "publishedOn": "2026-09-06",
   "storeUrl": "https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg",
   "pendingUpdate": {
-    "version": "0.3.0",
+    "version": "0.4.0",
     "status": "submitted-for-review",
     "submittedOn": "2026-09-06",
     "automaticPublication": true,
-    "sha256": "b19991476a971b24103a0c86ad52e1c67ebe3578fb73823bfc8035d49fa8447c",
-    "sourceCommit": "d000fb8a68d9ee4a3510b577899e2f24cc6d0935",
-    "replacesPendingVersion": "0.2.0",
+    "sha256": "c21b8896ac58d3221a362742a445069cc5cf4e3700985787fd955efd1e2504a1",
+    "sourceCommit": "05a307730c667e232d9e77cc00313cfd95970a1a",
+    "replacesPendingVersion": "0.3.0",
     "features": [
-      "unified extension and optional seven-day history scan",
-      "scan progress, saved results and clear coverage",
-      "reversible extension trust, disable, restore and removal",
-      "known-scam blocking and already-open warnings",
-      "daily local threat-list refresh",
-      "connected web dashboard with Mac and wallet follow-ups"
+      "account-connected monthly Free scans and unlimited Pro scans",
+      "Pro opt-in scam and extension-change monitoring",
+      "saved cleanup and local link checks on both plans",
+      "purple and mint guardian design",
+      "updated plan and privacy disclosures"
     ]
   }
 }

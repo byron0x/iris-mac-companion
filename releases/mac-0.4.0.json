@@ -28,7 +28,9 @@
     "framework": "Sparkle 2.9.6",
     "feed": "https://raw.githubusercontent.com/byron0x/iris-mac-companion/main/updates/appcast.xml",
     "signedFeed": true,
-    "signedArchive": true
+    "signedArchive": true,
+    "installedAppCheck": "0.3.1 to 0.4.0 through signed Sparkle update, install and relaunch"
   },
-  "webProductionDeployment": "dpl_J8RjpUwxzbNqzikTpM6CcRdeivGU"
+  "webProductionDeployment": "dpl_J8RjpUwxzbNqzikTpM6CcRdeivGU",
+  "localInstallVerification": "Retained scan, 15 trusted-item choices and dashboard connection; strict installed-bundle signature verified"
 }
