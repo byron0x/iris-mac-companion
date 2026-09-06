@@ -9,18 +9,20 @@
   "publishedOn": "2026-09-06",
   "storeUrl": "https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg",
   "pendingUpdate": {
-    "version": "0.2.0",
+    "version": "0.3.0",
     "status": "submitted-for-review",
     "submittedOn": "2026-09-06",
     "automaticPublication": true,
-    "sha256": "8149427e9c13d6da4ac381eb35fb2deb6a9f743c6f5a7cf42b51c147fcf2778a",
-    "sourceCommit": "1187fad",
+    "sha256": "b19991476a971b24103a0c86ad52e1c67ebe3578fb73823bfc8035d49fa8447c",
+    "sourceCommit": "d000fb8a68d9ee4a3510b577899e2f24cc6d0935",
+    "replacesPendingVersion": "0.2.0",
     "features": [
+      "unified extension and optional seven-day history scan",
+      "scan progress, saved results and clear coverage",
+      "reversible extension trust, disable, restore and removal",
       "known-scam blocking and already-open warnings",
       "daily local threat-list refresh",
-      "optional recent-history check",
-      "extension-change alerts",
-      "web dashboard security activity"
+      "connected web dashboard with Mac and wallet follow-ups"
     ]
   }
 }
