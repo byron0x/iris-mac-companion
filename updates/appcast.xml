@@ -1,0 +1,27 @@
+<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>IRIS Mac Companion</title>
+        <item>
+            <title>0.3.1</title>
+            <pubDate>Sun, 06 Sep 2026 13:57:43 -0300</pubDate>
+            <link>https://app.undercoveriris.io/device</link>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="plain-text"><![CDATA[A smoother start and easier updates.
+
+• Fixes a ZIP packaging issue that could show a “damaged app” warning after unpacking the download.
+• Adds Check for Updates to the IRIS menu, menu-bar companion and About page.
+• Checks for signed updates automatically, with an optional automatic-download setting.
+• Verifies updates before unpacking them and waits for an active scan to finish before restarting.
+• Keeps your saved review, trusted items and dashboard connection.
+]]></description>
+            <enclosure url="https://github.com/byron0x/iris-mac-companion/releases/download/v0.3.1/IRIS-Mac-0.3.1.zip" length="36586515" type="application/octet-stream" sparkle:edSignature="yRLYCRkHjtDy+YFGejwbHWrLZr7fhNynpV5VTqI2dG44G7P8K1j5uB2KS4iBMrPG+5GpfrmhU1Nvjt7cm/43DA=="></enclosure>
+        </item>
+    </channel>
+</rss><!-- sparkle-signatures:
+edSignature: aoygOvKASSKKNi14ELd6gaoGXYxvOghHwQ4k13uiLuA0R8ZLbQeO+KwsvTCslWTDC81KapGi4U67IsyQCtv+BQ==
+length: 1687
+-->
