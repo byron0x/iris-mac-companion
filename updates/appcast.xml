@@ -6,6 +6,28 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>IRIS Mac Companion</title>
         <item>
+            <title>0.4.1</title>
+            <pubDate>Sun, 06 Sep 2026 18:31:53 -0300</pubDate>
+            <link>https://app.undercoveriris.io/device</link>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>0.4.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="plain-text"><![CDATA[One companion, even after updates.
+
+• Fixes simultaneous relaunches that could leave a duplicate app process.
+• Dashboard links return to the running signed companion.
+
+More clarity. More control.
+
+• Understand uncertain findings with local evidence, publisher details and clear next steps.
+• Quarantine supported files, restore them, or permanently remove quarantined files after confirmation.
+• Connect your IRIS account for one monthly manual scan on Free or unlimited scans on Pro. Cleanup and updates stay available on both plans.
+• Pro can enable background checks of changes in Downloads, Desktop and user LaunchAgents while IRIS is running. This does not monitor every file or block execution.
+• A brighter purple and mint design, with saved results and trusted choices preserved.
+]]></description>
+            <enclosure url="https://github.com/byron0x/iris-mac-companion/releases/download/v0.4.1/IRIS-Mac-0.4.1.zip" length="36754772" type="application/octet-stream" sparkle:edSignature="7UC0/IMqBdfj4doUDvMvcJqoozG5+ZNtWsbulYDC/9fvEvsCSeZb7rVapQbSKoDhYDXAGuHQ/ajUy6mklKAUBQ=="/>
+        </item>
+        <item>
             <title>0.4.0</title>
             <pubDate>Sun, 06 Sep 2026 18:16:14 -0300</pubDate>
             <link>https://app.undercoveriris.io/device</link>
@@ -42,6 +64,6 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: KIqAHxs6iUdFOUle3r1UrQbjcXTkVAqnZMtL+RBgM1St9xGjOtwb0fcpNHzR65nJt3fbcrptcrdwwVX4YQuvDg==
-length: 3062
+edSignature: R/vAghBaSZ8rIIhNZ+s6D4G3dSR7sIceb8mdIvJYfQdlh2YT6eciqRr9yakpZKWbgnAsZTFDM8I/Bv5+dogGBg==
+length: 4618
 -->
