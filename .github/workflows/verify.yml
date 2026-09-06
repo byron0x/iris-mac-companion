@@ -15,6 +15,12 @@ jobs:
       - name: Package browser store submission
         run: python3 browser-extension/package.py
       - name: Verify encryption and reversible cleanup with temporary fixtures
-        run: swift run IRISCoreChecks
+        run: |
+          swift build --product IRISCoreChecks
+          check_binary="$(swift build --show-bin-path)/IRISCoreChecks"
+          # Sign the runner's test executable, as in the signed-release checks.
+          codesign --force --sign - "$check_binary"
+          codesign --verify --strict --verbose=2 "$check_binary"
+          "$check_binary"
       - name: Build native application
         run: swift build --product IRISCompanion
