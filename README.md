@@ -60,3 +60,9 @@ No background scanning starts on installation. See `THIRD_PARTY_NOTICES.md` for 
 Restore any quarantined files you intend to keep, disconnect the web dashboard, quit IRIS and remove the application. The encrypted review and quarantine are in `~/Library/Application Support/IRIS Companion`; deleting that folder also permanently removes its quarantined copies. Keychain stores the connection credential and the local report key under `io.undercoveriris.companion`.
 
 IRIS and HANS names and logos identify HANS Society's project. The software license does not grant trademark rights or imply endorsement by the credited upstream projects.
+
+### Companion 0.3 changes
+
+The Mac companion uses one main window, routes connection links to an already running signed copy, and no longer opens an extra dashboard tab after pairing. Common Terminal setup files have plain-language context; verified 1Password components show publisher-based context. User trust decisions are encrypted locally and bound to the file/signing snapshot and relevant access evidence. Changed items return for review; known-threat and malware-pattern findings cannot be trusted away.
+
+The browser companion has one explicit scan for extensions and the last seven days of history (up to 5,000 entries). Optional history permission is requested only by the user's click. Progress and results survive closing the review; only counts/status reach the connected web page. Trust/disable/restore and Chrome-confirmed removal remain local. No extension-malware verdict is inferred from permissions.

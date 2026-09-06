@@ -1,14 +1,52 @@
 import SwiftUI
 import AppKit
 import IRISCore
+import Security
+
+@MainActor final class CompanionDelegate: NSObject, NSApplicationDelegate {
+    static var model: CompanionModel?
+    static var showWindow: (() -> Void)?
+    func application(_ application: NSApplication, open urls: [URL]) {
+        // A signed release in Downloads can also be registered for the URL scheme.
+        // Forward directly to the already running, same-team app; never broadcast pairing secrets.
+        if let id = Bundle.main.bundleIdentifier,
+           let existing = NSRunningApplication.runningApplications(withBundleIdentifier: id).filter({ $0.processIdentifier != getpid() && ($0.launchDate ?? .distantFuture) < (NSRunningApplication.current.launchDate ?? .distantPast) && Self.samePublisher($0) }).min(by: { ($0.launchDate ?? .distantFuture) < ($1.launchDate ?? .distantFuture) }),
+           let target = existing.bundleURL {
+            let configuration = NSWorkspace.OpenConfiguration(); configuration.createsNewApplicationInstance = false
+            NSWorkspace.shared.open(urls, withApplicationAt: target, configuration: configuration) { _, error in
+                DispatchQueue.main.async { if error == nil { NSApp.terminate(nil) } }
+            }
+            return
+        }
+        Self.showWindow?(); application.activate(ignoringOtherApps: true)
+        for url in urls { Self.model?.connect(url) }
+    }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        Self.showWindow?(); return true
+    }
+    private static func samePublisher(_ app: NSRunningApplication) -> Bool {
+        var code: SecCode?, requirement: SecRequirement?
+        guard SecCodeCopyGuestWithAttributes(nil, [kSecGuestAttributePid: app.processIdentifier] as CFDictionary, [], &code) == errSecSuccess, let code,
+              SecRequirementCreateWithString("anchor apple generic and certificate leaf[subject.OU] = CDA39J55GH and identifier io.undercoveriris.companion" as CFString, [], &requirement) == errSecSuccess, let requirement else { return false }
+        return SecCodeCheckValidity(code, [], requirement) == errSecSuccess
+    }
+}
 
 @main struct IRISCompanionApp: App {
-    @StateObject private var model = CompanionModel()
+    @NSApplicationDelegateAdaptor(CompanionDelegate.self) private var delegate
+    @StateObject private var model: CompanionModel
+    init() {
+        if CommandLine.arguments.contains("--verify-review-fixtures") {
+            do { try FindingInspector.verifyFixtures(); exit(0) }
+            catch { print("Local review fixture verification failed."); exit(1) }
+        }
+        let value = CompanionModel(); _model = StateObject(wrappedValue: value); CompanionDelegate.model = value
+    }
     var body: some Scene {
-        WindowGroup("IRIS · Your Mac guardian companion") { GuardianView(model: model).onOpenURL { model.connect($0) } }
+        Window("IRIS · Your Mac guardian companion", id: "guardian") { GuardianView(model: model) }
             .defaultSize(width: 1000, height: 780)
         MenuBarExtra("IRIS", systemImage: "shield.lefthalf.filled") {
-            Button("Open IRIS") { NSApp.activate(ignoringOtherApps: true); NSApp.windows.first?.makeKeyAndOrderFront(nil) }
+            Button("Open IRIS") { CompanionDelegate.showWindow?(); NSApp.activate(ignoringOtherApps: true) }
             Button("Scan my Mac") { model.startScan() }.disabled(model.busy)
             Button("Open web dashboard") { model.openWeb() }
             Divider()
@@ -17,6 +55,7 @@ import IRISCore
     }
 }
 struct GuardianView: View {
+    @Environment(\.openWindow) private var openWindow
     @ObservedObject var model: CompanionModel
     @State private var section = "Review"
     @State private var expandedFindings: [String: Bool] = [:]
@@ -50,6 +89,7 @@ struct GuardianView: View {
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
             }
         }.background(Color(red: 0.035, green: 0.025, blue: 0.06)).preferredColorScheme(.dark).tint(violet).frame(minWidth: 820, minHeight: 620)
+            .onAppear { CompanionDelegate.showWindow = { openWindow(id: "guardian") } }
     }
     @ViewBuilder var brandImage: some View {
         if let url = Bundle.main.url(forResource: "IRISAvatar", withExtension: "jpg"), let icon = NSImage(contentsOf: url) {
@@ -93,6 +133,12 @@ struct GuardianView: View {
                     Text("This applies to the checks shown above. Any coverage gaps still need attention.").font(.caption).foregroundStyle(.secondary)
                 } else { Text("Review these first").font(.title2).bold() }
                 ForEach(attention) { findingCard($0) }
+                if !model.trusted.isEmpty {
+                    DisclosureGroup("Trusted by you · \(model.trusted.count)") {
+                        Text("Your choices are saved on this Mac. Changed files or access return for review. Known-threat matches always stay visible.").font(.caption).foregroundStyle(.secondary)
+                        ForEach(model.trusted) { finding in HStack { Label(finding.title, systemImage: "checkmark.seal").foregroundStyle(.green); Spacer(); Button("Review again") { model.trust(finding, remove: true) }.disabled(model.busy) }.padding(.vertical, 8) }
+                    }
+                }
                 if let safeguards = report.coverage.safeguards { safeguardCards(safeguards) }
                 DisclosureGroup("Other items · \(model.unresolved.filter { $0.level == .information }.count)") {
                     Text("Information only. These items were not flagged for cleanup.").font(.caption).foregroundStyle(.secondary)
@@ -188,6 +234,10 @@ struct GuardianView: View {
         DisclosureGroup(isExpanded: Binding(get: { expandedFindings[finding.id] ?? (finding.level != .information) }, set: { expandedFindings[finding.id] = $0 })) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(finding.explanation).fixedSize(horizontal: false, vertical: true)
+                if finding.canTrust == true {
+                    Button { model.trust(finding) } label: { Label("I trust this item", systemImage: "checkmark.seal") }.disabled(model.busy)
+                    Text("Remember this version. Changes bring it back for review.").font(.caption).foregroundStyle(.secondary)
+                }
                 Button(finding.action == .quarantine ? "Quarantine file" : finding.action == .disableStartup ? "Disable startup item" : finding.action == .settings ? "Review keyboard access" : "Show in Finder") { model.act(finding) }.disabled(model.busy)
                 DisclosureGroup("Why this appeared") {
                     ForEach(finding.evidence, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
@@ -231,6 +281,7 @@ struct GuardianView: View {
             Link("Privacy and connection details ↗", destination: URL(string: "https://app.undercoveriris.io/device-privacy")!)
             Link("Help: support@joinhans.io", destination: URL(string: "mailto:support@joinhans.io")!)
             if model.report != nil { Button("Remove saved review") { model.clearReview() }.disabled(model.busy) }
+            Button("Forget all trusted-item choices") { model.clearTrust() }.disabled(model.busy)
             if model.connected { Button("Disconnect web dashboard") { model.disconnect() } }
         }
     }

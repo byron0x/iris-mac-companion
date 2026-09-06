@@ -1,4 +1,5 @@
 import { recentActivity } from './scam-guard.mjs';
+import { currentScan } from './browser-scan.mjs';
 // Copyright © 2026 HANS Society Foundation. GPL-3.0-only.
 import { buildReport, ID, REVIEW_AGE } from "./audit.mjs";
 export const WEB_ORIGIN = "https://app.undercoveriris.io";
@@ -28,7 +29,7 @@ export function createService(browser, now = Date.now) {
   async function report() {
     const [infos, state] = await Promise.all([
       browser.management.getAll(),
-      browser.storage.local.get(["choices", "changes", "extensionWatch", "historyReview", "scamGuard", "scamActivity"]),
+      browser.storage.local.get(["choices", "changes", "extensionWatch", "historyReview", "scamGuard", "scamActivity", "browserScan"]),
     ]);
     const result = buildReport(
       infos,
@@ -44,6 +45,7 @@ export function createService(browser, now = Date.now) {
     const activity = recentActivity(state.scamActivity, now());
     if (Array.isArray(state.scamActivity) && activity.length !== state.scamActivity.length) await browser.storage.local.set({scamActivity:activity});
     result.security = { scamGuard: state.scamGuard || {enabled:false}, activity, extensionWatch: state.extensionWatch === true, history: history && history.checkedAt > now() - 7 * 86400000 ? { checkedAt: history.checkedAt, checkedCount: history.checkedCount, matchCount: history.matchCount, partial: history.partial } : null };
+    result.security.scan = currentScan(state.browserScan, now());
     return result;
   }
   async function external(message, sender) {
@@ -52,7 +54,7 @@ export function createService(browser, now = Date.now) {
       !message ||
       message.version !== 1 ||
       Object.keys(message).some(
-        (x) => !["version", "action", "focusId"].includes(x),
+        (x) => !["version", "action", "focusId", "section"].includes(x),
       )
     )
       throw Error("This connection is not allowed.");
@@ -68,6 +70,7 @@ export function createService(browser, now = Date.now) {
       return { version: 1, connected: false };
     }
     if (message.action === "openReview") {
+      if (message.section !== undefined && !['scan','connect','protection'].includes(message.section)) throw Error('Invalid section.');
       if (message.focusId !== undefined && !ID.test(message.focusId))
         throw Error("Invalid extension selection.");
       if (now() - lastOpened < 2000)
@@ -76,7 +79,7 @@ export function createService(browser, now = Date.now) {
       await browser.tabs.create({
         url:
           browser.runtime.getURL("review.html") +
-          (message.focusId ? "#" + message.focusId : ""),
+          (message.focusId ? "#" + message.focusId : message.section ? '#' + message.section : ''),
       });
       return { version: 1, opened: true };
     }

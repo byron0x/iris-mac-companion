@@ -14,6 +14,8 @@ public struct Finding: Codable, Identifiable, Sendable, Equatable {
     public var action: FindingAction
     public var resolved: Bool = false
     public var signature: String?
+    public var trusted: Bool?
+    public var canTrust: Bool?
     public init(path: String, title: String, category: String, level: FindingLevel, explanation: String, evidence: [String], action: FindingAction, home: String = NSHomeDirectory(), signature: String? = nil) {
         self.id = SHA256.hash(data: Data((category + "\u{0}" + path).utf8)).map { String(format: "%02x", $0) }.joined()
         self.title = title; self.category = category; self.level = level; self.explanation = explanation; self.evidence = evidence
@@ -48,7 +50,8 @@ public struct ScanReport: Codable, Sendable {
 public struct LocalItem: Codable, Sendable {
     public let path: String
     public let sha256: String?
-    public init(path: String, sha256: String?) { self.path = path; self.sha256 = sha256 }
+    public var reviewFingerprint: String?
+    public init(path: String, sha256: String?, reviewFingerprint: String? = nil) { self.path = path; self.sha256 = sha256; self.reviewFingerprint = reviewFingerprint }
 }
 public struct InventoryResult: Sendable {
     public var findings: [Finding]

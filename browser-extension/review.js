@@ -1,4 +1,4 @@
-import { loadDatabase, checkLink, reviewHistory, updateBadge } from "./protection.mjs";
+import { loadDatabase, checkLink, updateBadge } from "./protection.mjs";
 import { createService, WEB_ORIGIN, sharingActive } from "./service.mjs";
 import { fingerprint, ID, REVIEW_AGE } from "./audit.mjs";
 const service = createService(chrome);
@@ -61,6 +61,12 @@ function change(item, enabled, el) {
       void refresh();
     });
 }
+function remove(item, el) {
+  if (changing || !item.canRemove || !ID.test(item.id) || item.id === chrome.runtime.id) return;
+  changing = true; el.disabled = true;
+  // Chrome shows its own confirmation. Removing may erase extension settings; turning off remains reversible.
+  chrome.management.uninstall(item.id, {showConfirmDialog:true}).then(() => message(`${item.name} was removed. Reinstall it from its trusted publisher if you need it again.`)).catch(() => message('The extension was not removed. You can turn it off instead.')).finally(() => {changing=false;void refresh();});
+}
 async function keep(item, reset = false) {
   try {
     const info = await chrome.management.get(item.id);
@@ -105,7 +111,7 @@ function card(item) {
       !item.enabled
         ? "Turned off"
         : item.reviewed
-          ? "Kept by you"
+          ? "Trusted by you"
           : item.priority === "review"
             ? "Review access"
             : "For your information",
@@ -147,7 +153,7 @@ function card(item) {
     actions.append(undo);
   }
   if (item.enabled && !item.reviewed && !item.detailsLimited)
-    actions.append(button("Keep this extension", () => keep(item)));
+    actions.append(button("I trust this extension", () => keep(item)));
   if (item.reviewed)
     actions.append(button("Review again", () => keep(item, true)));
   actions.append(button("Browser settings ↗", () => settings(item.id)));
@@ -183,6 +189,10 @@ function card(item) {
         (item.hostPermissions.join(", ") || "None reported"),
     ),
   );
+  if (item.canRemove) {
+    const uninstall = button('Remove extension…', () => remove(item, uninstall));
+    details.append(node('p','Removing may erase this extension’s settings. Turning it off above lets you restore it more easily.'),uninstall);
+  }
   if (item.detailsLimited)
     details.append(
       node(
@@ -196,7 +206,7 @@ function card(item) {
 async function refresh() {
   const g = ++generation;
   try {
-    const [report, { sharing, extensionWatch, historyReview, scamGuard, scamActivity }] = await Promise.all([
+    const [report, { sharing, extensionWatch, historyReview, scamGuard }] = await Promise.all([
       service.report(),
       chrome.storage.local.get(["sharing", "extensionWatch", "historyReview", "scamGuard", "scamActivity"]),
     ]);
@@ -207,9 +217,17 @@ async function refresh() {
     const events = report.security.activity; $("#scam-activity").replaceChildren();
     for(const event of events.slice(-5).reverse()) $("#scam-activity").append(node('p', `${event.kind === 'blocked' ? 'Blocked' : 'Found open'}: ${event.host} · ${new Date(event.at).toLocaleString()}`));
     $("#watch").checked = extensionWatch === true;
-    const count = report.extensions.length; const left = report.extensions.filter(x => x.priority === "review").length;
-    $("#journey-summary").textContent = left ? `${left} decision${left === 1 ? "" : "s"} left. Keep tools you recognize; turn off ones you no longer need.` : "Extension review up to date. You can still check links and recent browsing below.";
-    $("#review-progress").max = Math.max(1,count); $("#review-progress").value = count ? count - left : 1;
+    const left = report.extensions.filter(x => x.priority === "review").length;
+    const scan = report.security.scan;
+    const scanning = scan?.status === 'scanning';
+    $("#scan-browser").disabled = scanning || checkingHistory;
+    $("#scan-browser").textContent = scanning ? 'Scanning your browser…' : scan ? 'Scan browser again' : 'Scan my browser';
+    $("#scan-status").textContent = scan?.message || 'One scan reviews extension access and the last 7 days of browsing. Your browser will ask before IRIS reads history.';
+    $("#review-progress").max = 3; $("#review-progress").value = scan?.step || 0;
+    $("#scan-stages").textContent = !scan ? '1 · Extensions   →   2 · Recent browsing   →   3 · Your next steps' : `${scan.step >= 2 ? '✓' : '1'} Extensions  ·  ${scan.historyStatus === 'complete' ? '✓' : '2'} Recent browsing  ·  ${scan.status === 'complete' ? '✓' : '3'} Results`;
+    $("#journey-summary").textContent = `${left} extension${left === 1 ? '' : 's'} to review${report.security.history ? ` · ${report.security.history.matchCount} flagged website${report.security.history.matchCount === 1 ? '' : 's'}` : ' · History not checked in this scan yet'}.`;
+    $("#scan-date").textContent = scan?.checkedAt ? `Last scan: ${new Date(scan.checkedAt).toLocaleString()}${scan.status === 'partial' ? ' · Some checks need attention' : ''}` : '';
+    $("#mac-followup").hidden = !(left || report.security.history?.matchCount || report.security.activity.length);
     renderHistory(historyReview);
     await updateBadge(chrome, report);
     $("#connect").textContent = connected
@@ -263,7 +281,7 @@ $("#connect").addEventListener("click", async () => {
       await chrome.storage.local.set({
         sharing: { origin: WEB_ORIGIN, expiresAt: Date.now() + REVIEW_AGE },
       });
-    await chrome.tabs.create({ url: WEB_ORIGIN + "/device" });
+    await chrome.tabs.create({ url: WEB_ORIGIN + "/device#browser-companion" });
     await refresh();
   } catch {
     message(
@@ -309,7 +327,7 @@ $("#watch").addEventListener("change", async event => {
   try { await chrome.storage.local.set({ extensionWatch: event.target.checked }); }
   catch { message("IRIS could not save monitoring preferences. Please try again."); }
 });
-let checkingHistory = false; let historyGeneration = 0;
+let checkingHistory = false;
 $("#link-form").addEventListener("submit", async event => {
   event.preventDefault();
   const input = $("#link").value;
@@ -334,23 +352,23 @@ function renderHistory(value) {
   const link = node("a", "Review wallet approvals in IRIS ↗", "primary"); link.href = WEB_ORIGIN + "/wallet"; link.target = "_blank"; link.rel = "noopener noreferrer";
   root.append(link, node("p", "Downloaded something? Run the Mac scan from your IRIS dashboard. Clearing browser history does not undo wallet signatures or remove downloaded files.", "muted"));
 }
-$("#history-check").addEventListener("click", async () => {
-  if (checkingHistory) return; const currentHistory = ++historyGeneration; checkingHistory = true; $("#history-check").disabled = true;
+async function scanBrowser() {
+  if (checkingHistory) return; checkingHistory = true; $("#history-check").disabled = true; $("#scan-browser").disabled = true;
   try {
     // Request from this user gesture, never from the website or background worker.
-    if (!await chrome.permissions.request({ permissions: ["history"] })) { message("History access was not granted. You can still check individual links."); return; }
-    message("Checking recent browsing locally…");
-    const { domains } = await loadDatabase();
-    const rows = await chrome.history.search({ text: "", startTime: Date.now() - 7 * 86400000, maxResults: 5000 });
-    if (currentHistory !== historyGeneration || !await chrome.permissions.contains({ permissions: ["history"] })) return;
-    const historyReview = reviewHistory(rows, domains);
-    await chrome.storage.local.set({ historyReview }); renderHistory(historyReview);
-    message("Recent-browsing check finished. See the result and next steps below.");
-  } catch { message("The history check could not finish. No browsing entries were changed."); }
-  finally { checkingHistory = false; $("#history-check").disabled = false; }
-});
+    await chrome.permissions.request({ permissions: ["history"] });
+    message('Scanning locally. You can leave this page open while IRIS prepares your results.');
+    const response = await chrome.runtime.sendMessage({action:'scanBrowser'});
+    if (!response?.ok) throw Error('Scan interrupted');
+    await refresh();
+    message('Your results are ready below. A flagged website visit is not proof of infection.');
+  } catch { message("The browser scan could not finish. No browsing entries or extensions were changed."); }
+  finally { checkingHistory = false; $("#history-check").disabled = false; await refresh(); }
+}
+$("#scan-browser").addEventListener('click', scanBrowser);
+$("#history-check").addEventListener('click', scanBrowser);
 $("#history-clear").addEventListener("click", async () => {
-  try { historyGeneration++; await chrome.permissions.remove({ permissions: ["history"] }); await chrome.storage.local.remove("historyReview"); renderHistory(null); message("The saved check and history permission were removed. Your browser history was not changed."); }
+  try { const response=await chrome.runtime.sendMessage({action:'clearBrowserScan'}); if(!response?.ok)throw Error(); renderHistory(null); message("The saved scan and history permission were removed. Your browser history was not changed."); await refresh(); }
   catch { message("Could not remove the saved check. Please try again."); }
 });
 loadDatabase().then(({source}) => { $("#phishing-source").textContent = `${source.domains.toLocaleString()} exact hostnames. Snapshot ${new Date(source.fetchedAt || source.sourceUpdatedAt).toLocaleDateString()}. ScamSniffer’s public data is delayed by ${source.sourceDelayDays} days.`; }).catch(() => { $("#phishing-source").textContent = "The packaged threat list is unavailable."; });

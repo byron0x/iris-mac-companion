@@ -25,12 +25,12 @@
       >
     </header>
     <main>
-      <section class="hero">
+      <section class="hero" id="scan">
         <span class="eyebrow">YOUR BROWSER, MORE IN CONTROL</span>
-        <h1>Less access.<br /><em>Less to worry about.</em></h1>
+        <h1>Your browser, checked.<br /><em>Your next step, clear.</em></h1>
         <p>
-          Keep the extensions you need. Turn off the ones you don’t. IRIS
-          explains their access and remembers what you’ve reviewed.
+          Review your extensions and spot known scam sites in recent browsing.
+          Keep the tools you trust. Take action on the things you don’t.
         </p>
         <div class="trust">
           <span>Local review</span><span>No browsing data uploaded</span
@@ -39,11 +39,16 @@
       </section>
       <div id="message" role="status" aria-live="polite" hidden></div>
 
-      <section class="protection-panel">
-        <span class="eyebrow">KEEP MAKING PROGRESS</span><h2>Your browser checklist</h2>
-        <p id="journey-summary"></p><progress id="review-progress" max="1" value="0" aria-label="Extension review progress"></progress>
-        <label class="watch-toggle"><input type="checkbox" id="watch" /> Watch for extension changes</label>
-        <p class="muted">IRIS adds a badge when extensions need review, including new versions or changed permissions. No page contents are read.</p>
+      <section class="protection-panel scan-panel" aria-label="Browser scan">
+        <button id="scan-browser" class="primary scan-cta">Scan my browser</button>
+        <p id="scan-status" role="status" aria-live="polite"></p>
+        <progress id="review-progress" max="3" value="0" aria-label="Browser scan progress"></progress>
+        <p id="scan-stages" class="muted"></p><p id="scan-date" class="muted"></p>
+        <h2 id="journey-summary"></h2>
+        <div id="mac-followup" class="guardian-next" hidden><strong>Finish the check on your Mac</strong><p class="muted">Don’t recognize an extension, or downloaded something from a flagged site? Your Mac companion can check startup software and accessible files for known threats. A browser warning alone does not mean your Mac is infected.</p><a class="primary" href="https://app.undercoveriris.io/device#device-content" target="_blank" rel="noopener noreferrer">Check my Mac with IRIS ↗</a> <a href="https://app.undercoveriris.io/wallet" target="_blank" rel="noopener noreferrer">Review wallet approvals ↗</a></div>
+      </section>
+      <section class="protection-panel">        <div class="history-review"><h3>Recent browsing</h3><p>Check up to 5,000 entries from the last 7 days. Your history is read locally only when you click below. If connected to IRIS, only the counts and check date appear in your web dashboard.</p>
+        <button id="history-check" class="primary">Scan again with history access</button><button id="history-clear" class="quiet">Forget check & remove history access</button><div id="history-result" aria-live="polite"></div></div>
       </section>
       <section class="review">
         <div class="section-title">
@@ -63,7 +68,10 @@
         </p>
         <div id="findings"></div>
       </section>
-      <section class="protection-panel" aria-label="Crypto phishing checks">
+      <section class="protection-panel" aria-label="Crypto phishing checks" id="protection">
+        <h2>Protection between scans</h2>
+        <label class="watch-toggle"><input type="checkbox" id="watch" /> Watch for extension changes</label>
+        <p class="muted">IRIS adds a badge when extensions need review, including new versions or changed permissions.</p>
         <label class="watch-toggle"><input type="checkbox" id="scam-guard" /> Block known crypto-scam sites</label>
         <p id="scam-guard-status" role="status">Protection is off until you enable it.</p>
         <p class="muted">IRIS checks sites you visit or already have open. Listed hostnames and their subdomains are blocked locally, with a warning and practical next steps. Navigation permission lets IRIS show that warning; page contents and wallet secrets are not read.</p>
@@ -73,8 +81,6 @@
         <p>Paste a link to check its hostname against a local list of known crypto-phishing sites.</p>
         <form id="link-form"><label for="link">Website link</label><div class="link-entry"><input id="link" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.com" maxlength="8192" /><button type="submit" class="primary">Check link</button></div></form>
         <p id="link-result" role="status" aria-live="polite"></p>
-        <div class="history-review"><h3>Have you visited a flagged site?</h3><p>Check up to 5,000 entries from the last 7 days. Your history is read locally only when you click below. If connected to IRIS, only the counts and check date appear in your web dashboard.</p>
-        <button id="history-check" class="primary">Check my last 7 days</button><button id="history-clear" class="quiet">Forget check & remove history access</button><div id="history-result" aria-live="polite"></div></div>
         <details><summary>Source and coverage</summary><p id="phishing-source">Loading packaged list details…</p><p>This is a snapshot with a 7-day source delay. Unlisted sites, newer scams and unlisted subdomains will be missed. No match does not mean safe. When enabled, the separate protection toggle blocks listed domains and their subdomains. IRIS does not inspect wallet transactions.</p><a href="https://github.com/scamsniffer/scam-database" target="_blank" rel="noopener noreferrer">Threat data by ScamSniffer · GPLv3 ↗</a></details>
       </section>
       <section class="connection">

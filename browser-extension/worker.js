@@ -1,8 +1,10 @@
 import { ALARM, setGuard, refreshFeed, recentActivity, listedHost } from './scam-guard.mjs';
-import { hostname } from './protection.mjs';
+import { hostname, loadDatabase } from './protection.mjs';
+import { createBrowserScan } from './browser-scan.mjs';
 import { updateBadge } from "./protection.mjs";
 import { createService } from "./service.mjs";
 const service = createService(chrome);
+const scanner = createBrowserScan(chrome, loadDatabase);
 chrome.runtime.onMessageExternal.addListener((message, sender, reply) => {
   service
     .external(message, sender)
@@ -69,11 +71,15 @@ async function checkOpenTabs() {
   }
 }
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
-  if(sender.id!==chrome.runtime.id || sender.url!==chrome.runtime.getURL('review.html') || message?.action!=='setScamGuard' || typeof message.enabled!=='boolean')return;
+  if(sender.id!==chrome.runtime.id || sender.url?.split('#')[0]!==chrome.runtime.getURL('review.html'))return;
+  if(message?.action==='scanBrowser' || message?.action==='clearBrowserScan') {
+    (message.action==='scanBrowser' ? scanner.start() : scanner.clear()).then(()=>reply({ok:true}),()=>reply({error:'The browser check could not finish.'}));return true;
+  }
+  if(message?.action!=='setScamGuard' || typeof message.enabled!=='boolean')return;
   queueGuard(async()=>{navigationListeners();await setGuard(message.enabled);if(message.enabled)void checkOpenTabs().catch(()=>{});return {ok:true};}).then(reply,()=>reply({error:'IRIS could not change scam protection. Check permissions and try again.'}));return true;
 });
 chrome.permissions.onAdded.addListener(navigationListeners);
-chrome.permissions.onRemoved.addListener(p=>{if(p.permissions?.includes('webNavigation'))void queueGuard(()=>setGuard(false));});
+chrome.permissions.onRemoved.addListener(p=>{if(p.permissions?.includes('webNavigation'))void queueGuard(()=>setGuard(false));if(p.permissions?.includes('history'))void scanner.cancelHistory();});
 chrome.alarms.onAlarm.addListener(a=>{if(a.name===ALARM)void queueGuard(refreshFeed);});
 chrome.runtime.onStartup.addListener(()=>void queueGuard(refreshFeed));
 navigationListeners();

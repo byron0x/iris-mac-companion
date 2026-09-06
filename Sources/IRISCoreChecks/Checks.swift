@@ -4,6 +4,24 @@ import IRISCore
 import CoreGraphics
 
 final class CoreChecks {
+    func testTrustIsBoundToContentAndNeverHidesThreats() throws {
+        var finding = Finding(path:"/tmp/config",title:"Config",category:"Shell startup",level:.review,explanation:"Fixture",evidence:["Startup"],action:.reveal)
+        var trust = TrustedFindings(); let hash = TrustedFindings.fingerprint(finding, content:["file:original"])
+        try trust.remember(finding, fingerprint:hash)
+        let restored = try JSONDecoder().decode(TrustedFindings.self,from:JSONEncoder().encode(trust))
+        try checkTrue(restored.recognizes(finding,fingerprint:hash))
+        try checkFalse(restored.recognizes(finding,fingerprint:nil))
+        try checkFalse(restored.recognizes(finding,fingerprint:TrustedFindings.fingerprint(finding,content:["file:changed"])))
+        finding.evidence.append("Can filter keyboard input")
+        try checkFalse(restored.recognizes(finding,fingerprint:TrustedFindings.fingerprint(finding,content:["file:original"])))
+        finding.level = .threat
+        try checkFalse(restored.recognizes(finding,fingerprint:hash)); try checkThrows(trust.remember(finding,fingerprint:hash))
+        finding.level = .review; finding.category = "Malware scan"
+        try checkFalse(restored.recognizes(finding,fingerprint:hash)); try checkThrows(trust.remember(finding,fingerprint:hash))
+        try checkTrue(FindingContext.explanation(path:"/Users/fixture/.zshrc", category:"Shell",verifiedTeam:nil,identifier:nil)?.contains("Terminal setup file") == true)
+        try checkTrue(FindingContext.explanation(path:"/Applications/1Password.app",category:"App",verifiedTeam:nil,identifier:"com.agilebits.onepassword7") == nil)
+        try checkTrue(FindingContext.explanation(path:"/Applications/1Password.app",category:"App",verifiedTeam:"2BUA8C4S2C",identifier:"com.agilebits.onepassword7")?.contains("signed by 1Password") == true)
+    }
     var cleanups: [() -> Void] = []
     func addTeardownBlock(_ work: @escaping () -> Void) { cleanups.append(work) }
     deinit { cleanups.forEach { $0() } }
@@ -167,6 +185,7 @@ func unwrap<T>(_ value: T?) throws -> T { guard let value else { throw CheckFail
     static func main() throws {
         let checks = CoreChecks()
         let cases: [(String, () throws -> Void)] = [
+            ("Remembered trust, changed contents/access, and threat visibility", checks.testTrustIsBoundToContentAndNeverHidesThreats),
             ("Scan progress, permission failures and protection status", checks.testScanJourneyDoesNotConfusePermissionFailuresOrSkippedFilesWithSafety),
             ("Authenticated encryption, tampering and expiry", checks.testEncryptedMessagesRejectTamperingWrongDirectionAndExpiry),
             ("Startup inventory paths and conservative classification", checks.testInventoryPreservesBinaryAndStartupPathsWithoutCallingUnsignedMalware),

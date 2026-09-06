@@ -116,6 +116,7 @@ export function buildReport(
         description:
           "Keep this only if you recognize where it came from and still need it.",
       });
+    reasons.sort((a,b) => Number(a.title === "Website access") - Number(b.title === "Website access"));
     const detailsLimited =
       (info.permissions?.length || 0) > 500 ||
       (info.hostPermissions?.length || 0) > 500 ||
@@ -146,6 +147,7 @@ export function buildReport(
       priority,
       reviewed,
       canDisable: !!info.enabled && info.mayDisable === true,
+      canRemove: info.mayDisable === true && info.installType !== 'admin',
       canRestore: !detailsLimited && canRestore(info, changes[info.id]),
       managed: info.installType === "admin" || info.mayDisable === false,
       reasons,

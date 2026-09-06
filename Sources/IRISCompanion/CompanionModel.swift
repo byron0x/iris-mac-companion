@@ -27,6 +27,8 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
     #endif
     lazy var engine = EngineService(root: support.appendingPathComponent("Engines"))
     private var localItems: [String: LocalItem] = [:]
+    private var trustedFindings = TrustedFindings()
+    private var connectingID: String?
     private var connection: Connection?
     private var scanTask: Task<Void, Never>?
     private var polling: Task<Void, Never>?
@@ -40,9 +42,10 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
     init() {
         try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         do { if let data = try Keychain.load("connection"), let value = try? JSONDecoder().decode(Connection.self, from: data), value.expiresAt > Date().timeIntervalSince1970 * 1000 { connection = value; connected = true } } catch { keychainLocked = true }
-        loadScan(); refreshReceipts(); startPolling()
+        loadTrust(); loadScan(); refreshReceipts(); startPolling()
     }
-    var unresolved: [Finding] { (report?.findings ?? []).filter { !$0.resolved }.sorted { rank($0.level) < rank($1.level) } }
+    var unresolved: [Finding] { (report?.findings ?? []).filter { !$0.resolved && ($0.trusted != true || $0.level == .threat) }.sorted { rank($0.level) < rank($1.level) } }
+    var trusted: [Finding] { (report?.findings ?? []).filter { $0.trusted == true && !$0.resolved } }
     func rank(_ level: FindingLevel) -> Int { level == .threat ? 0 : level == .review ? 1 : 2 }
     func refreshReceipts() { receipts = (try? quarantineStore().receipts()) ?? [] }
     func quarantineStore() throws -> QuarantineStore { try QuarantineStore(directory: support.appendingPathComponent("Quarantine")) }
@@ -55,7 +58,8 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         do {
             let key = try localKey()
             guard let value = try? RelayCrypto.open(box, as: SavedScan.self, key: key, direction: "local", maximumAge: 30 * 86400) else { return }
-            report = value.report; localItems = value.items; message = ScanAssessment.summary(value.report)
+            let enriched = FindingInspector.enrich(value.report, items: value.items)
+            report = enriched.0; localItems = enriched.1; applyTrust(); message = ScanAssessment.summary(report!)
         } catch { keychainLocked = true }
     }
     func unlockSavedReview() {
@@ -63,7 +67,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         do {
             _ = try Keychain.load("local-report-key", allowPrompt: true)
             if let data = try Keychain.load("connection", allowPrompt: true), let value = try? JSONDecoder().decode(Connection.self, from: data), value.expiresAt > Date().timeIntervalSince1970 * 1000 { connection = value; connected = true; startPolling() }
-            keychainLocked = false; problem = nil; loadScan()
+            keychainLocked = false; problem = nil; loadTrust(); loadScan()
         } catch { keychainLocked = true; problem = "Your saved review remains locked. IRIS has not changed its encryption key." }
     }
     func saveScan() {
@@ -73,6 +77,44 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
             let file = support.appendingPathComponent("latest-scan.json"); try JSONEncoder().encode(box).write(to: file, options: .atomic)
             try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
         } catch { keychainLocked = true; problem = "The scan is available now, but IRIS could not save it securely. Unlock the saved IRIS keys to enable saving." }
+    }
+    func loadTrust() {
+        guard let data = try? Data(contentsOf: support.appendingPathComponent("trusted-findings.json")), let box = try? JSONDecoder().decode(Envelope.self, from: data) else { return }
+        do { trustedFindings = try RelayCrypto.open(box, as: TrustedFindings.self, key: localKey(), direction: "local-trust", maximumAge: 100 * 365 * 86400) }
+        catch { keychainLocked = true }
+    }
+    func applyTrust() {
+        guard var value = report else { return }
+        for index in value.findings.indices { value.findings[index].trusted = trustedFindings.recognizes(value.findings[index], fingerprint: localItems[value.findings[index].id]?.reviewFingerprint) }
+        report = value
+    }
+    func clearTrust() {
+        guard !busy else { return }
+        do {
+            let file = support.appendingPathComponent("trusted-findings.json")
+            if FileManager.default.fileExists(atPath:file.path) { try FileManager.default.removeItem(at:file) }
+            trustedFindings = TrustedFindings(); applyTrust(); saveScan()
+            message = "Saved trust choices were removed. These items can be reviewed again."; Task { await publish() }
+        } catch { problem = "IRIS could not remove your saved trust choices. Please try again." }
+    }
+    func trust(_ finding: Finding, remove: Bool = false) {
+        guard !busy, let current = report?.findings.first(where: { $0.id == finding.id }), !current.resolved else { return }
+        do {
+            var next = trustedFindings
+            if remove { next.entries.removeValue(forKey: finding.id) }
+            else {
+                let inspected = FindingInspector.inspect(current, item: localItems[current.id])
+                guard let fingerprint = inspected.1.reviewFingerprint, fingerprint == localItems[current.id]?.reviewFingerprint else { throw ScanError.changedFile }
+                try next.remember(current, fingerprint: fingerprint)
+            }
+            let box = try RelayCrypto.seal(next, key: localKey(), direction: "local-trust")
+            let file = support.appendingPathComponent("trusted-findings.json")
+            try JSONEncoder().encode(box).write(to: file, options: .atomic)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+            trustedFindings = next; applyTrust(); saveScan()
+            message = remove ? "This item is back in your review." : "Trusted by you. IRIS will ask again if this item or its access changes. You can undo this under Trusted by you."
+            Task { await publish() }
+        } catch { problem = error.localizedDescription }
     }
     func startScan() {
         guard !busy else { return }
@@ -102,7 +144,9 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                 let result = try await withTaskCancellationHandler { try await work.value } onCancel: { work.cancel(); engine.runner.cancel() }
                 try Task.checkCancellation()
                 report = keyboard.merging(into: result.0); report?.coverage.safeguards = safeguards
-                localItems = result.1; saveScan()
+                let enriched = await Task.detached { FindingInspector.enrich(keyboard.merging(into: result.0), items: result.1) }.value
+                try Task.checkCancellation()
+                report = enriched.0; report?.coverage.safeguards = safeguards; localItems = enriched.1; applyTrust(); saveScan()
                 message = ScanAssessment.summary(report!)
             } catch is CancellationError { message = "Scan stopped before it finished. Any previous results below are unchanged." }
             catch { problem = error.localizedDescription; message = "Scan could not finish. Any previous results below are unchanged." }
@@ -115,7 +159,8 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         scanTask = Task {
             let keyboard = await Task.detached { KeyboardScanner.check() }.value
             if !Task.isCancelled {
-                report = keyboard.merging(into: report); saveScan()
+                let enriched = FindingInspector.enrich(keyboard.merging(into: report), items: localItems)
+                report = enriched.0; localItems = enriched.1; applyTrust(); saveScan()
                 message = keyboard.coverage.status == "unavailable" ? "Keyboard access could not be checked. Your other results are still available." : "Keyboard review updated. Your other scan results are still available."
             } else { message = "Check stopped. Your previous review is still available." }
             busy = false; await publish()
@@ -127,7 +172,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         do { let file = support.appendingPathComponent("latest-scan.json"); if FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }; report = nil; localItems = [:]; message = "Your saved review was removed. Quarantined files remain available to restore."; Task { await publish() } }
         catch { problem = "IRIS could not remove the saved review. Please try again." }
     }
-    func openWeb() { NSWorkspace.shared.open(URL(string: "https://app.undercoveriris.io/device")!) }
+    func openWeb() { NSWorkspace.shared.open(URL(string: "https://app.undercoveriris.io/device?companion=mac#device-content")!) }
     var appURL: URL { Bundle.main.bundleURL }
     var installedInApplications: Bool { appURL.path.hasPrefix("/Applications/") || appURL.path.hasPrefix(NSHomeDirectory() + "/Applications/") }
     func showAppInFinder() { NSWorkspace.shared.activateFileViewerSelecting([appURL]) }
@@ -151,19 +196,22 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
               query.count == 2, let ticket = query.first(where: { $0.name == "ticket" })?.value, let id = query.first(where: { $0.name == "id" })?.value,
               ticket.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil, id.range(of: "^[a-f0-9]{32}$", options: .regularExpression) != nil,
               let key = parts.fragment, (try? RelayCrypto.decodeKey(key)) != nil else { problem = ScanError.invalidPairing.localizedDescription; return }
+        if connection?.id == id || connectingID == id { return }
+        connectingID = id
         let code = SHA256.hash(data: Data(key.utf8)).prefix(3).map { String(format: "%02X", $0) }.joined()
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert(); alert.messageText = "Connect this Mac to IRIS?"
         alert.informativeText = "Check that your IRIS browser shows connection code \(code). Encrypted reports will be shared with that browser for 30 days. Files stay on this Mac. You can disconnect at any time."
         alert.addButton(withTitle: "Connect Mac"); alert.addButton(withTitle: "Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard alert.runModal() == .alertFirstButtonReturn else { connectingID = nil; return }
         Task {
+            defer { connectingID = nil }
             do {
                 let value: ClaimResponse = try await request(["action": "claim", "ticket": ticket], token: nil)
                 guard value.id == id else { throw ScanError.invalidPairing }
                 let next = Connection(id: id, token: value.token, key: key, expiresAt: value.expiresAt)
                 try Keychain.save("connection", data: JSONEncoder().encode(next)); connection = next; connected = true; problem = nil; lastBrowserActivity = Date(); startPolling()
-                await publish(); openWeb()
+                message = "Connected. Your existing dashboard will update automatically."; await publish()
             } catch { problem = error.localizedDescription }
         }
     }
@@ -199,7 +247,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                 sharedReport?.coverage.limitations.append("The web dashboard shows a shortened report. The complete review remains in the Mac app.")
                 while let value = sharedReport, (try JSONEncoder().encode(value)).count > 380_000, !value.findings.isEmpty { sharedReport?.findings.removeLast() }
             }
-            let state = SharedState(version: 1, status: busy ? "scanning" : problem == nil ? (report.map { ScanAssessment.needsAttention($0) ? "attention" : "complete" } ?? "ready") : "attention", message: message, report: sharedReport, updatedAt: Date().timeIntervalSince1970 * 1000, capabilities: ["keyboardCheck", "fullDiskAccess"], progress: progress)
+            let state = SharedState(version: 1, status: busy ? "scanning" : problem == nil ? (report.map { ScanAssessment.needsAttention($0) ? "attention" : "complete" } ?? "ready") : "attention", message: message, report: sharedReport, updatedAt: Date().timeIntervalSince1970 * 1000, capabilities: ["keyboardCheck", "fullDiskAccess", "trustFindings"], progress: progress)
             let box = try RelayCrypto.seal(state, key: RelayCrypto.decodeKey(c.key), direction: "report")
             let payload = try JSONSerialization.jsonObject(with: JSONEncoder().encode(box))
             let _: EmptyResponse = try await request(["action": "report", "id": c.id, "payload": payload], token: c.token)
@@ -237,7 +285,9 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         if command.action == "scan" { startScan(); return }
         if command.action == "keyboardCheck" { checkKeyboard(); return }
         if command.action == "fullDiskAccess" { NSApp.activate(ignoringOtherApps: true); openFullDiskAccess(); return }
-        guard !busy, let report, command.reportId == report.id, let id = command.findingId, let finding = report.findings.first(where: { $0.id == id && !$0.resolved }), command.action == finding.action.rawValue else { return }
+        guard !busy, let report, command.reportId == report.id, let id = command.findingId, let finding = report.findings.first(where: { $0.id == id && !$0.resolved }) else { return }
+        if command.action == "trust" || command.action == "untrust" { trust(finding, remove: command.action == "untrust"); return }
+        guard command.action == finding.action.rawValue else { return }
         act(finding)
     }
     func act(_ finding: Finding) {

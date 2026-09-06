@@ -28,7 +28,7 @@ public enum ScanAssessment {
     }
     public static func checked(_ value: String) -> Bool { ["complete", "checked", "available locations checked"].contains(value) }
     public static func needsAttention(_ report: ScanReport) -> Bool {
-        !checked(report.coverage.inventory) || !checked(report.coverage.malware) || report.coverage.keyboard?.status != "checked" || report.findings.contains { !$0.resolved && $0.level != .information } || (report.coverage.safeguards ?? []).contains { $0.status != "enabled" }
+        !checked(report.coverage.inventory) || !checked(report.coverage.malware) || report.coverage.keyboard?.status != "checked" || report.findings.contains { !$0.resolved && ($0.trusted != true || $0.level == .threat) && $0.level != .information } || (report.coverage.safeguards ?? []).contains { $0.status != "enabled" }
     }
     public static func summary(_ report: ScanReport) -> String {
         let threats = report.findings.filter { !$0.resolved && $0.level == .threat }.count

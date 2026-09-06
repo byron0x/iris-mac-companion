@@ -1,6 +1,12 @@
-IRIS browser companion 0.2.0 update
+IRIS browser companion 0.3.0 update
 
-Adds a local crypto-phishing link check, an optional last-7-days history check, an opt-in extension-change badge, and simpler extension review. Required permissions: management, storage, declarativeNetRequest and alarms. Optional webNavigation enables warning pages and checking already-open tabs after consent. History is optional and requested only by the user's Check my last 7 days click. No broad host permissions, page content access, transaction inspection, native messaging or remote code. Known-scam blocking uses local declarative rules; validated domain data updates daily from the fixed ScamSniffer GitHub feed.
+New in this update: one Scan my browser action reviews extensions and, after optional history permission, checks up to 5,000 entries from the last seven days against the local ScamSniffer list. A progress bar and saved completion/partial status appear in the companion and the connected web dashboard. Declining history still completes the extension review and clearly leaves browsing unchecked. History is never scanned on a timer or triggered by the website.
+
+Trust decisions are reversible and expire after 30 days or an extension version/permission change. Users can turn extensions off and restore them; an additional Remove extension action always uses Chrome's uninstall confirmation. Broad permissions are not described as malware. Flagged websites or unfamiliar extensions offer Mac and wallet follow-up checks; the copy does not claim a visit proves infection.
+
+No new permissions beyond 0.2.0.
+
+Adds a local crypto-phishing link check, an optional last-7-days history check, an opt-in extension-change badge, and simpler extension review. Required permissions: management, storage, declarativeNetRequest and alarms. Optional webNavigation enables warning pages and checking already-open tabs after consent. History is optional and requested only by the user's Scan my browser click. No broad host permissions, page content access, transaction inspection, native messaging or remote code. Known-scam blocking uses local declarative rules; validated domain data updates daily from the fixed ScamSniffer GitHub feed.
 
 Test: open the extension review, paste https://example.com and choose Check link. This returns no exact match, explicitly not a safety verdict. The packaged ScamSniffer GPLv3 hostname snapshot and its date, seven-day delay and exact-match limitations are disclosed. No entered links leave the browser.
 
