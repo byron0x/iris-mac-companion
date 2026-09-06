@@ -2,7 +2,9 @@
 
 A Manifest V3 companion for Chrome, Brave and Edge. It provides one local extension-access review, conservative permission explanations, remembered Keep choices and reversible disable/restore. The web app displays the same review after a one-time optional connection. The Mac app is not required for browser checks.
 
-**Development build; no public store listing is approved yet.** Do not send average users through developer mode. The production IRIS web app should link to the approved store listing when available.
+**Version 0.1.0 is published in the Chrome Web Store.** [Install the browser guardian companion](https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg), then connect it from [IRIS Device & browser](https://app.undercoveriris.io/device). Developer mode is only for contributors.
+
+The September 6, 2026 release was downloaded from Google's distribution service and matched against the submitted package. Its Chromium integration test passed for local review, saved choices, disable/restore, website connection and disconnection. Browser-specific confirmation behavior should still be checked on Chrome, Brave and Edge when updating the release.
 
 ## What works
 
@@ -41,7 +43,7 @@ The web repository contains a real Chromium integration test. Set `IRIS_BROWSER_
 
 1. Register a Chrome Web Store developer account and complete publisher verification using accurate details. The publisher makes the trader/non-trader declaration.
 2. Upload `dist/IRIS-Browser-Companion-0.1.0.zip` as a new item. The packaging allowlist excludes tests and the development key.
-3. Retrieve the store-issued extension ID/public key and update development identity/configuration to that identity. Set `IRIS_BROWSER_EXTENSION_ID` in Vercel to that exact ID. Preserve the publisher identity for updates.
+3. Preserve the existing store listing and extension ID when uploading updates. `store/release.json` records its ID and public key. Production `IRIS_BROWSER_EXTENSION_ID` must match that ID; the unpacked development build intentionally uses a separate test identity.
 4. Supply screenshots, a single-purpose description and permission justifications. Privacy URL: `https://app.undercoveriris.io/device-privacy`. Describe the optional direct website disclosure accurately in the store privacy questionnaire; do not claim data never leaves the extension context.
 5. Verify a store-distributed build on Chrome, Brave and Edge, including native permission confirmations, restore and web connection. Then publish the listing and set `IRIS_BROWSER_STORE_URL` to the approved installable Chrome Web Store URL. Apple enrollment is unrelated to this release.
 
