@@ -25,7 +25,7 @@ assert "runtime" in signature.stderr, "Hardened runtime is required"
 assert f"TeamIdentifier={args.team_id}" in signature.stderr
 assert "Timestamp=" in signature.stderr, "Secure timestamp is required"
 for relative in ("MacOS/IRISCompanion", "Helpers/clamscan", "Helpers/freshclam", "Helpers/sigtool"):
-    subprocess.run(["lipo", "-verify_arch", "arm64", "x86_64", str(bundle / "Contents" / relative)], check=True)
+    subprocess.run(["lipo", str(bundle / "Contents" / relative), "-verify_arch", "arm64", "x86_64"], check=True)
 subprocess.run(["xcrun", "stapler", "validate", str(bundle)], check=True)
 subprocess.run(["spctl", "--assess", "--type", "execute", "--verbose=2", str(bundle)], check=True)
 for relative in ("Resources/LICENSE", "Resources/THIRD_PARTY_NOTICES.md", "Resources/IRIS.icns", "Resources/HANSIcon.png"):

@@ -62,7 +62,7 @@ function navigationListeners() {
   chrome.tabs.onRemoved.addListener(id=>{navigations.delete(id);void chrome.storage.session.remove('warning:'+id);});
 }
 async function checkOpenTabs() {
-  const tabs=await chrome.tabs.query({incognito:false});
+  const tabs=(await chrome.tabs.query({})).filter(tab=>!tab.incognito);
   for(const tab of tabs.slice(0,100)) {
     const frame=await chrome.webNavigation.getFrame({tabId:tab.id,frameId:0}).catch(()=>null);
     if(frame?.url)await showScamWarning({tabId:tab.id,frameId:0,url:frame.url},'visited');
