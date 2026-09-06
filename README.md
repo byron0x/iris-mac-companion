@@ -2,7 +2,7 @@
 
 A free, open-source Mac companion for IRIS by HANS Society Foundation. It helps people understand startup software and active keyboard listeners, check common download locations against malware signatures and perform supported, reversible cleanup. Dark purple SwiftUI interface; macOS 13+; Apple silicon and Intel.
 
-**Development release. No signed public download is available yet.** Public distribution requires Developer ID Application signing, Apple notarization, and the release checks below.
+**Mac 0.2.0 is available:** [download the signed, Apple-notarized release](https://github.com/byron0x/iris-mac-companion/releases/tag/v0.2.0). Unzip it, move IRIS Mac Companion into Applications, and open it. Connect through the [IRIS dashboard](https://app.undercoveriris.io/device). The exact download passed trust and scanner-fixture checks on fresh Intel and Apple silicon runners; [verification results](https://github.com/byron0x/iris-mac-companion/actions/runs/34033932546).
 
 Version 0.2 adds a large scan action, six-stage progress and selected-file counters, explicit Full Disk Access guidance with a draggable app icon and Finder shortcut, and FileVault/firewall/Gatekeeper status. Startup permission failures are distinguished from other scanner failures. Cancelled scans preserve the previous report.
 

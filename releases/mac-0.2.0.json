@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "status": "published",
+  "publishedOn": "2026-09-06",
+  "url": "https://github.com/byron0x/iris-mac-companion/releases/tag/v0.2.0",
+  "downloadUrl": "https://github.com/byron0x/iris-mac-companion/releases/download/v0.2.0/IRIS-Mac-0.2.0.zip",
+  "sha256": "93185a529a764fa9ae3c5e16740df4307d1b9a8f02ffd9a42c69eee656a38ece",
+  "sourceCommit": "59608a052239144428c9acbf88432784040af150",
+  "notarizationId": "cd1b3095-008e-41e2-be81-f0bff2798fd2",
+  "notarizationStatus": "Accepted",
+  "verificationRun": "https://github.com/byron0x/iris-mac-companion/actions/runs/34033932546",
+  "verificationPlatforms": ["macos-15", "macos-15-intel"],
+  "webProductionDeployment": "dpl_HrrCitxXiq3qCQRzxfzAFHrjfnZz"
+}

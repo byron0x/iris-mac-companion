@@ -138,6 +138,18 @@ p {
   color: #211135;
   font-weight: 650;
 }
+a.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 11px 18px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  font-size: 14px;
+}
+a.primary:hover { border-color: #eee9f6; }
+.guardian-next { margin: 22px 0; }
 .quiet {
   background: transparent;
   color: #cbbadf;
