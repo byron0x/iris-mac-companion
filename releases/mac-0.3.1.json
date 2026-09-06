@@ -1,0 +1,37 @@
+{
+  "version": "0.3.1",
+  "build": "4",
+  "status": "published",
+  "publishedOn": "2026-09-06",
+  "url": "https://github.com/byron0x/iris-mac-companion/releases/tag/v0.3.1",
+  "downloadUrl": "https://github.com/byron0x/iris-mac-companion/releases/download/v0.3.1/IRIS-Mac-0.3.1.zip",
+  "sha256": "d69de4156156237820f81bf3c9226c02dec35b2eb84df2551e62e9b4135988bf",
+  "nativeBuildCommit": "134ee2563819857ad80f878705240b01ed29db16",
+  "verificationCommit": "4e5b749",
+  "notarizationId": "749bf3e5-2ff6-4797-93dc-371316c78be3",
+  "notarizationStatus": "Accepted",
+  "verificationRun": "https://github.com/byron0x/iris-mac-companion/actions/runs/34047621961",
+  "verificationPlatforms": [
+    "macos-15",
+    "macos-15-intel"
+  ],
+  "archiveVerification": [
+    "AppleDouble metadata rejection",
+    "ditto extraction",
+    "ordinary unzip extraction",
+    "Developer ID and Gatekeeper",
+    "stapled notarization",
+    "universal binaries",
+    "ClamAV and native review fixtures"
+  ],
+  "updater": {
+    "framework": "Sparkle 2.9.6",
+    "feed": "https://raw.githubusercontent.com/byron0x/iris-mac-companion/main/updates/appcast.xml",
+    "signedFeed": true,
+    "signedArchive": true,
+    "signatureTamperChecks": "passed",
+    "installedAppCheck": "up to date"
+  },
+  "localInstallVerification": "Browser download, normal archive extraction, Finder replacement, standard Apple first-open prompt, retained review and dashboard connection",
+  "webProductionDeployment": "dpl_BxnTtx8RQrKheYsmZFRJf4MBphD7"
+}
