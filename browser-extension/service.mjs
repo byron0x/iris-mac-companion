@@ -64,7 +64,7 @@ export function createService(browser, now = Date.now) {
       throw Error("Unsupported browser request.");
     const state = await browser.storage.local.get("sharing");
     if (message.action === "status")
-      return { version: 1, connected: sharingActive(state.sharing, now()) };
+      return { version: 1, connected: sharingActive(state.sharing, now()), capabilities:['browserScan','reviewSections'] };
     if (message.action === "disconnect") {
       await browser.storage.local.remove("sharing");
       return { version: 1, connected: false };
