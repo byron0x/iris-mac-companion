@@ -1,20 +1,15 @@
-IRIS browser companion 0.3.0 update
+IRIS browser companion 0.4.0 update
 
-New in this update: one Scan my browser action reviews extensions and, after optional history permission, checks up to 5,000 entries from the last seven days against the local ScamSniffer list. A progress bar and saved completion/partial status appear in the companion and the connected web dashboard. Declining history still completes the extension review and clearly leaves browsing unchecked. History is never scanned on a timer or triggered by the website.
+New: connected account plans and clearer plan status. Free: one manual browser scan per UTC calendar month. Pro: unlimited scans, opt-in extension-change badges and known-scam protection. Saved review, trust, disable/restore/removal, and local link checks remain available on Free. No new extension permissions. CSP allows the fixed IRIS plan API in addition to the existing GitHub feed.
 
-Trust decisions are reversible and expire after 30 days or an extension version/permission change. Users can turn extensions off and restore them; an additional Remove extension action always uses Chrome's uninstall confirmation. Broad permissions are not described as malware. Flagged websites or unfamiliar extensions offer Mac and wallet follow-up checks; the copy does not claim a visit proves infection.
+To test: install and open the companion. Check link works without sign-in: enter https://example.com (no match is explicitly not a safety verdict). Choose Connect to IRIS; allow sharing, then sign in to the dashboard with a Google account or wallet. The dashboard completes a one-time connection and shows IRIS account connected. Return to the companion and choose Scan my browser. Optional history access is requested only by this click. Declining it still runs the extension portion with explicit partial coverage. Keep or turn off an ordinary extension, then restore it. Removal uses Chrome's own confirmation. A second complete Free scan shows the monthly limit while saved cleanup remains available.
 
-No new permissions beyond 0.2.0.
+IRIS Pro is an optional subscription purchased on the website. It enables repeated scans and opt-in live protection. The UI discloses this before a user grants navigation access. Account checks carry a random credential and scan-attempt ID only. No browser report is uploaded to the account server. Expired or unverifiable access pauses monitoring. Previously installed rules remain during a brief five-minute verified-access window; no remote code is executed.
 
-Adds a local crypto-phishing link check, an optional last-7-days history check, an opt-in extension-change badge, and simpler extension review. Required permissions: management, storage, declarativeNetRequest and alarms. Optional webNavigation enables warning pages and checking already-open tabs after consent. History is optional and requested only by the user's Scan my browser click. No broad host permissions, page content access, transaction inspection, native messaging or remote code. Known-scam blocking uses local declarative rules; validated domain data updates daily from the fixed ScamSniffer GitHub feed.
+History is processed locally on demand (up to 5,000 entries from seven days). Matched hostnames stay local; connected web displays counts only. History results expire after seven days. Live warning activity stores at most 100 hostname/time/status records for 30 days; these can appear directly in the connected web dashboard. No page text, wallet transactions, seed phrases, passwords, normal navigation stream, or clipboard contents are collected. Scan and pairing behavior can be tested with any Google or wallet account; no IRIS-specific password is required.
 
-Test: open the extension review, paste https://example.com and choose Check link. This returns no exact match, explicitly not a safety verdict. The packaged ScamSniffer GPLv3 hostname snapshot and its date, seven-day delay and exact-match limitations are disclosed. No entered links leave the browser.
-
-Enable Watch for extension changes. The toolbar badge shows how many extensions need review. Keep a recognized extension or turn one off; undo remains available. This is a permission review, not malware detection.
-
-History is processed locally on demand, at most 5,000 entries from seven days. Only matched hostnames are retained locally. Saved checks expire after seven days and are pruned when the extension runs. Forget check & remove history access removes the result and optional permission. No automatic history collection or history deletion.
-
-Connect to IRIS shares the extension report, monitoring state and recent-check aggregate counts directly with app.undercoveriris.io in the same browser for 30 days. Live scam warnings share matched hostname, timestamp and blocked/already-open status after the protection toggle explains this. Matched history-check hostnames and raw URLs are not shared; no scan data is uploaded to the IRIS server. A Google login is not needed to test this browser connection.
+ScamSniffer's public feed updates daily when protection is on but has a seven-day source delay. No match does not certify safety. No threat visit proves device infection.
 
 Privacy: https://app.undercoveriris.io/device-privacy
+Source: https://github.com/byron0x/iris-mac-companion/tree/main/browser-extension
 Support: support@joinhans.io

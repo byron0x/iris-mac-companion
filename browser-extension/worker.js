@@ -1,6 +1,8 @@
 import { ALARM, setGuard, refreshFeed, recentActivity, listedHost } from './scam-guard.mjs';
 import { hostname, loadDatabase } from './protection.mjs';
 import { createBrowserScan } from './browser-scan.mjs';
+import {createAccess,currentAccess} from './account-access.mjs';
+const accountAccess=createAccess(chrome);
 import { updateBadge } from "./protection.mjs";
 import { createService } from "./service.mjs";
 const service = createService(chrome);
@@ -21,6 +23,8 @@ chrome.action.onClicked.addListener(() =>
   chrome.tabs.create({ url: chrome.runtime.getURL("review.html") }),
 );
 chrome.runtime.onInstalled.addListener((event) => {
+  // Preserve the review available before account-based scan allowances launched.
+  if(event.reason === 'update' && event.previousVersion && /^0\.[0-3]\./.test(event.previousVersion)) void chrome.management.getAll().then(infos=>chrome.storage.local.set({scanExtensionIds:infos.map(x=>x.id)}));
   if (event.reason === "install")
     void chrome.tabs.create({ url: chrome.runtime.getURL("review.html") });
 });
@@ -28,7 +32,7 @@ chrome.runtime.onInstalled.addListener((event) => {
 // Browser events wake the service worker even when the review page is closed.
 const watch = () => service.report().then(r => updateBadge(chrome, r)).catch(() => {});
 for (const event of [chrome.management.onInstalled, chrome.management.onUninstalled, chrome.management.onEnabled, chrome.management.onDisabled]) event.addListener(watch);
-chrome.storage.onChanged.addListener(watch);
+chrome.storage.onChanged.addListener(changes=>{if(['choices','changes','extensionWatch','browserScan','scanExtensionIds'].some(k=>k in changes))void watch();});
 chrome.runtime.onStartup.addListener(watch);
 void watch();
 
@@ -73,13 +77,25 @@ async function checkOpenTabs() {
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(sender.id!==chrome.runtime.id || sender.url?.split('#')[0]!==chrome.runtime.getURL('review.html'))return;
   if(message?.action==='scanBrowser' || message?.action==='clearBrowserScan') {
-    (message.action==='scanBrowser' ? scanner.start() : scanner.clear()).then(()=>reply({ok:true}),()=>reply({error:'The browser check could not finish.'}));return true;
+    (message.action==='scanBrowser' ? accountAccess.reserve().then(()=>scanner.start()).then(async result=>{if(result.status==='complete')await chrome.storage.local.remove('scanRequestID');return result;}) : scanner.clear()).then(()=>reply({ok:true}),e=>reply({error:e.message || 'The browser check could not finish.'}));return true;
+  }
+  if(message?.action==='setExtensionWatch' && typeof message.enabled==='boolean') {
+    (async()=>{if(message.enabled&&!((await accountAccess.status(true)).monitoring))throw Error('Extension monitoring is included with IRIS Pro.');await chrome.storage.local.set({extensionWatch:message.enabled});return {ok:true};})().then(reply,e=>reply({error:e.message}));return true;
   }
   if(message?.action!=='setScamGuard' || typeof message.enabled!=='boolean')return;
-  queueGuard(async()=>{navigationListeners();await setGuard(message.enabled);if(message.enabled)void checkOpenTabs().catch(()=>{});return {ok:true};}).then(reply,()=>reply({error:'IRIS could not change scam protection. Check permissions and try again.'}));return true;
+  queueGuard(async()=>{if(message.enabled&&!((await accountAccess.status(true)).monitoring))throw Error('Live scam protection is included with IRIS Pro.');navigationListeners();await setGuard(message.enabled);if(message.enabled)void checkOpenTabs().catch(()=>{});return {ok:true};}).then(reply,e=>reply({error:e.message || 'IRIS could not change scam protection. Check permissions and try again.'}));return true;
 });
 chrome.permissions.onAdded.addListener(navigationListeners);
 chrome.permissions.onRemoved.addListener(p=>{if(p.permissions?.includes('webNavigation'))void queueGuard(()=>setGuard(false));if(p.permissions?.includes('history'))void scanner.cancelHistory();});
 chrome.alarms.onAlarm.addListener(a=>{if(a.name===ALARM)void queueGuard(refreshFeed);});
 chrome.runtime.onStartup.addListener(()=>void queueGuard(refreshFeed));
 navigationListeners();
+async function refreshPlan() {
+  let allowed=false;
+  try {allowed=(await accountAccess.status(true)).monitoring;}catch {const {companionAccess:a}=await chrome.storage.local.get('companionAccess');allowed=currentAccess(a)&&a.monitoring;}
+  if(!allowed){const state=await chrome.storage.local.get(['scamGuard','extensionWatch']);if(state.scamGuard?.enabled)await queueGuard(()=>setGuard(false));if(state.extensionWatch)await chrome.storage.local.set({extensionWatch:false});}
+}
+chrome.alarms.create('iris-plan-check',{periodInMinutes:3});
+chrome.alarms.onAlarm.addListener(a=>{if(a.name==='iris-plan-check')void refreshPlan();});
+chrome.runtime.onStartup.addListener(()=>void refreshPlan());
+void refreshPlan();

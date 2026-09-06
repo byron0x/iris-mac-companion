@@ -1,0 +1,7 @@
+IRIS Mac Companion 0.4.0
+
+Clearer finding assessments explain signing identities, common shell setup files and suspicious command patterns using local evidence. Supported user-owned files can be quarantined; quarantined files can be restored or permanently deleted after confirmation. Restoring a file preserves the rest of your review.
+
+Connect to your IRIS account once for scans. Free includes one manual scan per UTC calendar month; Pro includes unlimited scans and optional background checks in Downloads, Desktop and user LaunchAgents. Saved cleanup and app updates stay available on both plans. Background checks do not block execution or cover every Mac location; the app shows gaps and limits.
+
+Brighter violet and mint accents match the IRIS security dashboard. Signed Sparkle updates remain available in About. macOS 13 or later; Apple silicon and Intel.

@@ -24,6 +24,7 @@ public final class QuarantineStore: @unchecked Sendable {
     public func eligible(_ path: String) -> Bool {
         guard path.hasPrefix("/"), !path.contains("//"), !path.split(separator: "/").contains(where: { $0 == "." || $0 == ".." }), !path.contains("\u{0}"), !path.contains("\n"), !path.contains("\r") else { return false }
         return ["Downloads/", "Desktop/", "Library/LaunchAgents/"].contains { path.hasPrefix(home + "/" + $0) }
+            || LocalAssessment.shellFiles.contains(URL(fileURLWithPath: path).lastPathComponent) && URL(fileURLWithPath: path).deletingLastPathComponent().path == home
     }
     static func openDirectory(_ path: String) throws -> Int32 {
         guard path.hasPrefix("/") else { throw ScanError.unsafePath }
@@ -89,10 +90,12 @@ public final class QuarantineStore: @unchecked Sendable {
         let original = URL(fileURLWithPath: receipt.originalPath)
         let parent = try Self.openDirectory(original.deletingLastPathComponent().path); defer { close(parent) }
         // Temporarily grant owner read permission while the file remains inside the private quarantine.
+        var before = stat()
+        guard fstatat(target, receipt.id, &before, AT_SYMLINK_NOFOLLOW) == 0, before.st_mode & S_IFMT == S_IFREG, before.st_uid == getuid(), before.st_nlink == 1 else { throw ScanError.unsafePath }
         guard fchmodat(target, receipt.id, 0o400, AT_SYMLINK_NOFOLLOW) == 0 else { throw ScanError.unsafePath }
         let fd = openat(target, receipt.id, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
         guard fd >= 0 else { throw ScanError.unsafePath }; defer { close(fd) }
-        var info = stat(); guard fstat(fd, &info) == 0, info.st_mode & S_IFMT == S_IFREG, info.st_nlink == 1, info.st_uid == getuid(), try digest(fd: fd) == receipt.sha256 else { _ = fchmod(fd, 0); throw ScanError.changedFile }
+        var info = stat(); guard fstat(fd, &info) == 0, info.st_ino == before.st_ino, info.st_dev == before.st_dev, info.st_mode & S_IFMT == S_IFREG, info.st_nlink == 1, info.st_uid == getuid(), try digest(fd: fd) == receipt.sha256 else { _ = fchmod(fd, 0); throw ScanError.changedFile }
         guard renameatx_np(target, receipt.id, parent, original.lastPathComponent, UInt32(RENAME_EXCL)) == 0 else { _ = fchmod(fd, 0); throw ScanError.commandFailed("A file already exists at the original location. IRIS has kept the quarantined copy.") }
         var restored = stat()
         guard fstatat(parent, original.lastPathComponent, &restored, AT_SYMLINK_NOFOLLOW) == 0, restored.st_ino == info.st_ino, restored.st_dev == info.st_dev, restored.st_nlink == 1, try digest(fd: fd) == receipt.sha256 else {
@@ -100,5 +103,21 @@ public final class QuarantineStore: @unchecked Sendable {
         }
         guard fchmod(fd, mode_t(receipt.originalMode & 0o700)) == 0 else { throw ScanError.commandFailed("The file was restored, but macOS could not restore its permissions. Review it in Finder.") }
         try? FileManager.default.removeItem(at: directory.appendingPathComponent(receipt.id + ".json"))
+    }
+    /// Explicit permanent removal of a verified quarantined regular file only.
+    public func remove(_ receipt: QuarantineReceipt) throws {
+        guard UUID(uuidString: receipt.id) != nil, receipts().contains(where: { $0.id == receipt.id && $0.originalPath == receipt.originalPath && $0.sha256 == receipt.sha256 }) else { throw ScanError.unsafePath }
+        let target = try Self.openDirectory(directory.path); defer { close(target) }
+        var before = stat()
+        guard fstatat(target, receipt.id, &before, AT_SYMLINK_NOFOLLOW) == 0, before.st_mode & S_IFMT == S_IFREG, before.st_uid == getuid(), before.st_nlink == 1 else { throw ScanError.unsafePath }
+        guard fchmodat(target, receipt.id, 0o400, AT_SYMLINK_NOFOLLOW) == 0 else { throw ScanError.unsafePath }
+        let fd = openat(target, receipt.id, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard fd >= 0 else { throw ScanError.unsafePath }; defer { _ = fchmod(fd, 0); close(fd) }
+        var info = stat(), current = stat()
+        guard fstat(fd, &info) == 0, info.st_ino == before.st_ino, info.st_dev == before.st_dev, info.st_mode & S_IFMT == S_IFREG, info.st_uid == getuid(), info.st_nlink == 1,
+              try digest(fd: fd) == receipt.sha256,
+              fstatat(target, receipt.id, &current, AT_SYMLINK_NOFOLLOW) == 0, current.st_ino == info.st_ino, current.st_dev == info.st_dev else { throw ScanError.changedFile }
+        guard unlinkat(target, receipt.id, 0) == 0 else { throw ScanError.unsafePath }
+        _ = unlinkat(target, receipt.id + ".json", 0)
     }
 }

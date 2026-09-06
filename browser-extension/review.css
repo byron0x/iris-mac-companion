@@ -8,7 +8,7 @@
   color: #eee9f6;
   background: #0a0711;
   --muted: #b5a7c8;
-  --purple: #c7a7ff;
+  --purple: #bf8cff;
 }
 * {
   box-sizing: border-box;
@@ -35,7 +35,7 @@ button {
   color: #eee9f6;
 }
 button:hover {
-  border-color: #c7a7ff;
+  border-color: #bf8cff;
 }
 button:disabled {
   opacity: 0.5;
@@ -199,7 +199,7 @@ a.primary:hover { border-color: #eee9f6; }
 }
 .finding:target {
   border-color: var(--purple);
-  box-shadow: 0 0 0 2px #c7a7ff33;
+  box-shadow: 0 0 0 2px #bf8cff33;
 }
 .finding-header {
   display: flex;
@@ -339,6 +339,8 @@ progress::-webkit-progress-value { background: #c7a4ff; border-radius: 8px; }
 .scan-panel { background: linear-gradient(120deg,#211532,#15101e); }
 .scan-panel #journey-summary { color: #ddcef2; font-size: 20px; }
 #scan-stages { color: #98dfc0; }
-.guardian-next { border-left: 3px solid #c7a7ff; padding-left: 18px; }
+.guardian-next { border-left: 3px solid #bf8cff; padding-left: 18px; }
 .guardian-next a { margin: 8px 14px 0 0; }
 .history-review { border-top: 0; margin: 0; padding: 0; }
+
+.plan-banner{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px 26px;border:1px solid #7851af;border-radius:18px;background:linear-gradient(120deg,#2d1850,#141020);margin:20px 0}.plan-banner a{white-space:nowrap;color:#99ffc2}.scan-progress-fill{background:#99ffc2}@media(max-width:600px){.plan-banner{align-items:flex-start;flex-direction:column;gap:8px}}

@@ -26,10 +26,13 @@ enum FindingInspector {
         let actionPath = item?.path ?? path
         var content: [String] = []
         var team: String?, identifier: String?
+        var signatureInvalid = false
         var code: SecStaticCode?
         let flags = SecCSFlags(rawValue: kSecCSStrictValidate | kSecCSCheckAllArchitectures | kSecCSCheckNestedCode)
-        if SecStaticCodeCreateWithPath(url as CFURL, [], &code) == errSecSuccess, let code,
-           SecStaticCodeCheckValidity(code, flags, nil) == errSecSuccess {
+        if SecStaticCodeCreateWithPath(url as CFURL, [], &code) == errSecSuccess, let code {
+          let status = SecStaticCodeCheckValidity(code, flags, nil)
+          signatureInvalid = status != errSecSuccess && status != errSecCSUnsigned
+          if status == errSecSuccess {
             var info: CFDictionary?
             if SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess, let values = info as? [String: Any],
                let digest = values[kSecCodeInfoUnique as String] as? Data {
@@ -37,6 +40,7 @@ enum FindingInspector {
                 identifier = values[kSecCodeInfoIdentifier as String] as? String
                 content.append("signed:" + digest.base64EncodedString())
             }
+          }
         }
         if let v = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey]), v.isRegularFile == true, v.isSymbolicLink != true, (v.fileSize ?? Int.max) <= 100_000_000, let hash = try? fileSHA256(url) { content.append("file:" + hash) }
         if actionPath != path {
@@ -49,8 +53,20 @@ enum FindingInspector {
             if !finding.evidence.contains(publisher) { finding.evidence.append(publisher) }
         }
         let fingerprint = content.isEmpty ? nil : TrustedFindings.fingerprint(finding, content: content)
+        var localText: String?
+        if LocalAssessment.shellFiles.contains(url.lastPathComponent),
+           let v = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey]), v.isRegularFile == true, v.isSymbolicLink != true, (v.fileSize ?? Int.max) <= 262144 {
+            localText = try? String(contentsOf: url, encoding: .utf8)
+        }
+        finding.assessment = LocalAssessment.assess(finding, verifiedTeam: team, signatureInvalid: signatureInvalid, text: localText)
+        let actionHash = item?.sha256 ?? (try? fileSHA256(URL(fileURLWithPath: actionPath)))
+        // Exact supported shell files can be isolated just like user LaunchAgents.
+        if finding.action == .reveal, actionPath == path,
+           LocalAssessment.shellFiles.contains(url.lastPathComponent), url.deletingLastPathComponent().path == NSHomeDirectory(), actionHash != nil {
+            finding.action = .quarantine
+        }
         finding.canTrust = fingerprint != nil && finding.level != .threat && finding.category != "Malware scan" && !finding.resolved
-        return (finding, LocalItem(path: actionPath, sha256: item?.sha256, reviewFingerprint: fingerprint))
+        return (finding, LocalItem(path: actionPath, sha256: actionHash, reviewFingerprint: fingerprint))
     }
     static func enrich(_ report: ScanReport, items: [String: LocalItem]) -> (ScanReport, [String: LocalItem]) {
         var next = report, local = items

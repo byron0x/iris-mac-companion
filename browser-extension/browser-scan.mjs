@@ -18,6 +18,7 @@ export function createBrowserScan(browser, loadDatabase, now = Date.now) {
       await save();
       const [infos, state] = await Promise.all([browser.management.getAll(), browser.storage.local.get(['choices','changes'])]);
       const extensions = buildReport(infos, browser.runtime.id, state.choices, state.changes, now());
+      await browser.storage.local.set({scanExtensionIds:extensions.extensions.map(x=>x.id)});
       result = {...result, extensionsChecked:extensions.extensions.length, extensionPartial:extensions.partial, step:2, message:'Checking recent browsing against the local scam list…'};
       await save();
       if (await browser.permissions.contains({permissions:['history']})) {

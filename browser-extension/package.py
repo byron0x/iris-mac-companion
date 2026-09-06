@@ -10,7 +10,7 @@ out=root.parent/'dist';out.mkdir(exist_ok=True)
 archive=out/f"IRIS-Browser-Companion-{manifest['version']}.zip"
 files=['audit.mjs','service.mjs','worker.js','review.js','review.html','review.css','LICENSE','protection.mjs','scam-guard.mjs','warning.html','warning.js','data/crypto-phishing.json','data/source.json','data/SCAMSNIFFER-LICENSE']
 files += ['assets/'+p.name for p in sorted((root/'assets').iterdir()) if p.is_file()]
-files.append('browser-scan.mjs')
+files += ['browser-scan.mjs', 'account-access.mjs']
 with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED) as z:
  z.writestr('manifest.json',json.dumps(manifest,indent=2,ensure_ascii=False)+'\n')
  for file in files:z.write(root/file,file)

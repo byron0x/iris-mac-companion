@@ -6,7 +6,7 @@ import IRISCore
 
 struct Connection: Codable { let id: String; let token: String; let key: String; let expiresAt: Double }
 struct SavedScan: Codable { let report: ScanReport; let items: [String: LocalItem] }
-struct SharedState: Codable { let version: Int; let status: String; let message: String; let report: ScanReport?; let updatedAt: Double; let capabilities: [String]; let progress: ScanProgress? }
+struct SharedState: Codable { let version: Int; let status: String; let message: String; let report: ScanReport?; let updatedAt: Double; let capabilities: [String]; let progress: ScanProgress?; let access: CompanionAccess?; let monitoring: WatchState }
 struct PollResponse: Decodable { let command: Envelope?; let browserActive: Bool }
 struct ClaimResponse: Decodable { let id: String; let token: String; let expiresAt: Double }
 
@@ -20,6 +20,13 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
     @Published var receipts: [QuarantineReceipt] = []
     @Published var problem: String?
     @Published var keychainLocked = false
+    @Published var access: CompanionAccess?
+    @Published var watchState = WatchState()
+    private var watcher: ChangeWatcher?
+    private var watchTask: Task<Void, Never>?
+    private var pendingPaths = Set<String>()
+    private var watchCoverageGap = false
+    private var lastAccessCheck = Date.distantPast
     #if DEBUG
     let support = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/IRIS Companion Development")
     #else
@@ -43,6 +50,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         do { if let data = try Keychain.load("connection"), let value = try? JSONDecoder().decode(Connection.self, from: data), value.expiresAt > Date().timeIntervalSince1970 * 1000 { connection = value; connected = true } } catch { keychainLocked = true }
         loadTrust(); loadScan(); refreshReceipts(); startPolling()
+        watchState.enabled = UserDefaults.standard.bool(forKey: "proMonitoring")
     }
     var unresolved: [Finding] { (report?.findings ?? []).filter { !$0.resolved && ($0.trusted != true || $0.level == .threat) }.sorted { rank($0.level) < rank($1.level) } }
     var trusted: [Finding] { (report?.findings ?? []).filter { $0.trusted == true && !$0.resolved } }
@@ -118,6 +126,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
     }
     func startScan() {
         guard !busy else { return }
+        guard connected else { message = "Connect your IRIS account once to use your monthly scan or Pro access. Your saved results and cleanup remain available."; openWeb(); return }
         busy = true; problem = nil; message = "Preparing your Mac check…"
         let run = UUID(); scanRun = run
         progress = ScanProgress("prepare", step: 1, message: message)
@@ -134,6 +143,9 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                 }
                 try await engine.prepare(progress: { update(ScanProgress("prepare", step: 1, message: $0)) })
                 try Task.checkCancellation()
+                let requestID = UserDefaults.standard.string(forKey: "scanRequestID") ?? UUID().uuidString.lowercased()
+                UserDefaults.standard.set(requestID, forKey: "scanRequestID")
+                try await refreshAccess(action: "reserve", runId: requestID)
                 progress = ScanProgress("keyboard", step: 2, message: "Checking keyboard access…"); message = progress!.message; await publish()
                 let keyboard = await Task.detached { KeyboardScanner.check() }.value
                 try Task.checkCancellation()
@@ -148,6 +160,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                 try Task.checkCancellation()
                 report = enriched.0; report?.coverage.safeguards = safeguards; localItems = enriched.1; applyTrust(); saveScan()
                 message = ScanAssessment.summary(report!)
+                if report?.coverage.malware == "complete" && report?.coverage.inventory == "available locations checked" { watchCoverageGap = false; UserDefaults.standard.removeObject(forKey: "scanRequestID") }
             } catch is CancellationError { message = "Scan stopped before it finished. Any previous results below are unchanged." }
             catch { problem = error.localizedDescription; message = "Scan could not finish. Any previous results below are unchanged." }
             scanRun = nil; progress = nil; busy = false; await publish()
@@ -217,11 +230,12 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
     }
     func disconnect() {
         let old = connection; connection = nil; connected = false; Keychain.remove("connection")
+        access = nil; syncWatcher()
         if let old { Task { let _: EmptyResponse? = try? await request(["action": "disconnect", "id": old.id], token: old.token) } }
     }
     struct EmptyResponse: Decodable {}
-    func request<T: Decodable>(_ payload: [String: Any], token: String?) async throws -> T {
-        var req = URLRequest(url: endpoint); req.httpMethod = "POST"; req.timeoutInterval = 20
+    func request<T: Decodable>(_ payload: [String: Any], token: String?, planCheck: Bool = false) async throws -> T {
+        var req = URLRequest(url: planCheck ? URL(string: "https://app.undercoveriris.io/api/companion-access")! : endpoint); req.httpMethod = "POST"; req.timeoutInterval = 20
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token { req.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
         req.httpBody = try JSONSerialization.data(withJSONObject: payload)
@@ -229,7 +243,10 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         guard data.count <= 700_000 else { throw ScanError.invalidEnvelope }
         guard let http = response as? HTTPURLResponse else { throw ScanError.commandFailed("IRIS could not reach the web app.") }
         if http.statusCode == 404, let token, connection?.token == token { connection = nil; connected = false; Keychain.remove("connection") }
-        guard http.statusCode == 200 else { throw ScanError.commandFailed("IRIS could not sync with the web app. Your local scan remains available.") }
+        guard http.statusCode == 200 else {
+            if planCheck, let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let error = body["error"] as? String { throw ScanError.commandFailed(String(error.prefix(400))) }
+            throw ScanError.commandFailed("IRIS could not sync with the web app. Your saved results and cleanup remain available.")
+        }
         return try JSONDecoder().decode(T.self, from: data)
     }
     func publish() async {
@@ -247,7 +264,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                 sharedReport?.coverage.limitations.append("The web dashboard shows a shortened report. The complete review remains in the Mac app.")
                 while let value = sharedReport, (try JSONEncoder().encode(value)).count > 380_000, !value.findings.isEmpty { sharedReport?.findings.removeLast() }
             }
-            let state = SharedState(version: 1, status: busy ? "scanning" : problem == nil ? (report.map { ScanAssessment.needsAttention($0) ? "attention" : "complete" } ?? "ready") : "attention", message: message, report: sharedReport, updatedAt: Date().timeIntervalSince1970 * 1000, capabilities: ["keyboardCheck", "fullDiskAccess", "trustFindings"], progress: progress)
+            let state = SharedState(version: 1, status: busy ? "scanning" : problem == nil ? (report.map { ScanAssessment.needsAttention($0) ? "attention" : "complete" } ?? "ready") : "attention", message: message, report: sharedReport, updatedAt: Date().timeIntervalSince1970 * 1000, capabilities: ["keyboardCheck", "fullDiskAccess", "trustFindings", "findingAssessment", "accountScans", "changeMonitoring"], progress: progress, access: access, monitoring: watchState)
             let box = try RelayCrypto.seal(state, key: RelayCrypto.decodeKey(c.key), direction: "report")
             let payload = try JSONSerialization.jsonObject(with: JSONEncoder().encode(box))
             let _: EmptyResponse = try await request(["action": "report", "id": c.id, "payload": payload], token: c.token)
@@ -264,6 +281,8 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                         let r: PollResponse = try await self.request(["action": "poll", "id": c.id], token: c.token)
                         guard !Task.isCancelled, self.connection?.id == c.id else { continue }
                         if r.browserActive { self.lastBrowserActivity = Date() }
+                        if Date().timeIntervalSince(self.lastAccessCheck) > 180 { try? await self.refreshAccess() }
+                        self.syncWatcher()
                         pause = self.busy || Date().timeIntervalSince(self.lastBrowserActivity) < 60 ? 5 : 60
                         if let box = r.command {
                             if !self.seenCommands.contains(box.id) {
@@ -275,7 +294,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                             await self.publish()
                         }
                         if Date().timeIntervalSince(self.lastUpload) > (r.browserActive ? 60 : 3600) { await self.publish() }
-                    } catch { /* Offline Mac operation is intentionally independent of the relay. */ }
+                    } catch { self.syncWatcher() /* Saved review and cleanup remain available offline. */ }
                 }
                 try? await Task.sleep(nanoseconds: pause * 1_000_000_000)
             }
@@ -301,7 +320,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         guard finding.action == .quarantine || finding.action == .disableStartup, let hash = item.sha256 else { return }
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert(); alert.messageText = finding.action == .disableStartup ? "Stop this item starting automatically?" : "Quarantine this file?"
-        alert.informativeText = "\(finding.title)\n\n\(finding.explanation)\n\nIRIS will move the file into a private quarantine. You can restore it from the Mac app."
+        alert.informativeText = "\(finding.title)\n\nIRIS will move this file into a private quarantine and remove its execute permission. You can restore it in Quarantine.\n\n" + (LocalAssessment.shellFiles.contains(URL(fileURLWithPath: item.path).lastPathComponent) ? "Terminal settings or tools may stop loading in new sessions. Existing Terminal sessions keep running." : "Already-running processes may keep running. For startup items, IRIS also asks macOS to unload the selected user service.")
         alert.addButton(withTitle: finding.action == .disableStartup ? "Disable startup item" : "Quarantine file"); alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         do {
@@ -314,7 +333,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                 guard result.status == 0 || result.status == 3 else { throw ScanError.commandFailed("macOS could not stop this startup item. Review it in System Settings before trying again.") }
             }
             _ = try store.quarantine(path: item.path, expectedHash: hash)
-            if let index = report?.findings.firstIndex(where: { $0.id == finding.id }) { report?.findings[index].resolved = true }
+            if let index = report?.findings.firstIndex(where: { $0.id == finding.id }) { report?.findings[index].resolved = true; report?.findings[index].cleanupStatus = "quarantined" }
             message = "Item quarantined. You can restore it from the Mac app."; saveScan(); refreshReceipts(); Task { await publish() }
         } catch { problem = error.localizedDescription }
     }
@@ -322,7 +341,95 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         let alert = NSAlert(); alert.messageText = "Restore this quarantined file?"; alert.informativeText = "Only restore files you trust. This puts the file back at its original location. Startup items may run again at your next login."
         alert.addButton(withTitle: "Restore file"); alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        do { try quarantineStore().restore(receipt); refreshReceipts(); message = "File restored. Run a new scan to update your review."; report = nil; localItems = [:]; try? FileManager.default.removeItem(at: support.appendingPathComponent("latest-scan.json")); Task { await publish() } }
+        do {
+            try quarantineStore().restore(receipt); refreshReceipts()
+            updateCleanup(receipt, status: "restored"); message = "File restored. It is back in your review; your other results and trusted choices are unchanged."
+            Task { await publish() }
+        }
         catch { problem = error.localizedDescription }
+    }
+    func reveal(_ finding: Finding) {
+        guard let item = localItems[finding.id] else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.path)])
+    }
+    func deleteQuarantined(_ receipt: QuarantineReceipt) {
+        guard !busy else { return }
+        let alert = NSAlert(); alert.alertStyle = .warning
+        alert.messageText = "Permanently delete this quarantined file?"
+        alert.informativeText = URL(fileURLWithPath: receipt.originalPath).lastPathComponent + "\n\nThis deletes the quarantined copy. IRIS will no longer be able to restore it. This does not erase other copies or stop already-running processes."
+        alert.addButton(withTitle: "Delete permanently"); alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        do { try quarantineStore().remove(receipt); refreshReceipts(); updateCleanup(receipt, status: "deleted"); message = "Quarantined file permanently deleted."; Task { await publish() } }
+        catch { problem = error.localizedDescription }
+    }
+    private func updateCleanup(_ receipt: QuarantineReceipt, status: String) {
+        guard var value = report else { return }
+        for index in value.findings.indices where localItems[value.findings[index].id]?.path == receipt.originalPath {
+            value.findings[index].resolved = status != "restored"
+            value.findings[index].cleanupStatus = status
+            if status == "restored" { value.findings[index].trusted = false }
+        }
+        report = value; saveScan()
+    }
+    func refreshAccess(action: String = "status", runId: String? = nil) async throws {
+        guard let c = connection else { access = nil; throw ScanError.commandFailed("Connect your Mac to IRIS to start a scan.") }
+        var payload: [String: Any] = ["action":action,"kind":"mac","id":c.id]
+        if let runId { payload["runId"] = runId }
+        let value: CompanionAccess = try await request(payload, token: c.token, planCheck: true)
+        guard connection?.id == c.id, value.current else { throw ScanError.invalidEnvelope }
+        access = value; lastAccessCheck = Date(); syncWatcher()
+    }
+    func setMonitoring(_ enabled: Bool) {
+        watchState.enabled = enabled; UserDefaults.standard.set(enabled, forKey: "proMonitoring")
+        if enabled { Task { do { try await refreshAccess(); syncWatcher(); await publish() } catch { problem = error.localizedDescription; syncWatcher() } } }
+        else { syncWatcher(); Task { await publish() } }
+    }
+    func syncWatcher() {
+        guard watchState.enabled, connected, access?.current == true, access?.monitoring == true else {
+            watcher?.stop(); watchTask?.cancel(); pendingPaths.removeAll()
+            watchState.status = watchState.enabled ? "paused" : "off"
+            watchState.message = watchState.enabled ? "Monitoring paused. Connect an active Pro account; IRIS resumes when it can verify access." : "Monitoring is off. Manual scans and saved cleanup actions are available with your plan."
+            return
+        }
+        if watcher == nil { watcher = ChangeWatcher(changed: { [weak self] paths in self?.queueChanges(paths) }, gap: { [weak self] in
+            self?.watchCoverageGap = true; self?.watchState.status = "partial"; self?.watchState.message = "Some file-change events were missed or a watched folder moved. Run a full scan to check current files."
+            Task { await self?.publish() }
+        }) }
+        let running = watcher?.start() == true
+        if running && (busy || watchState.status == "partial") { return }
+        watchState.status = running ? "watching" : "unavailable"
+        watchState.message = watchState.status == "watching" ? "Watching Downloads, Desktop and your user LaunchAgents folder while IRIS is running. Changes trigger local checks; execution is not blocked." : "macOS could not start file-change notifications. Reopen IRIS and check folder access."
+    }
+    func queueChanges(_ paths: [String]) {
+        guard access?.current == true, access?.monitoring == true, watchState.enabled else { syncWatcher(); return }
+        if paths.count + pendingPaths.count > 200 { watchCoverageGap = true; watchState.status = "partial"; watchState.message = "Many files changed at once. Some changes need a full scan." }
+        for path in paths.prefix(200) where pendingPaths.count < 200 { pendingPaths.insert(path) }
+        guard watchTask == nil, !pendingPaths.isEmpty else { return }
+        watchTask = Task { [weak self] in
+            defer { self?.watchTask = nil; if let self, !self.pendingPaths.isEmpty { self.queueChanges([]) } }
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard let self, !Task.isCancelled else { return }
+            while self.busy && !Task.isCancelled { try? await Task.sleep(nanoseconds: 2_000_000_000) }
+            guard !Task.isCancelled, self.access?.current == true, self.access?.monitoring == true else { return }
+            let paths = Array(self.pendingPaths); self.pendingPaths.removeAll()
+            self.busy = true; self.watchState.status = "checking"; self.watchState.message = "Checking changed files locally…"
+            self.engine.runner.resetCancellation()
+            do {
+                try await self.engine.prepare(progress: { _ in })
+                let engine = self.engine
+                let result = try await Task.detached { try engine.checkChanges(paths) }.value
+                if !Task.isCancelled {
+                    var value = self.report ?? ScanReport(scannedItems: 0, coverage: Coverage(), findings: [])
+                    for finding in result.0 { value.findings.removeAll { $0.id == finding.id }; value.findings.append(finding) }
+                    self.report = value; self.localItems.merge(result.1) { _, new in new }; self.applyTrust(); self.saveScan()
+                    self.watchState.checkedAt = Date().timeIntervalSince1970 * 1000; self.watchState.filesChecked += result.2
+                    self.watchState.matches += result.0.filter { $0.level == .threat }.count
+                    if !result.0.isEmpty { self.message = "Monitoring found \(result.0.count) changed items to review."; NSApp.requestUserAttention(.informationalRequest) }
+                    self.watchState.message = (self.watchCoverageGap || result.3) ? "Changed files checked with coverage gaps. Some files were inaccessible or outside the 100 MB / 200-file limits." : "Changed files checked. Watching for the next change."
+                    self.watchState.status = (self.watchCoverageGap || result.3) ? "partial" : "watching"
+                }
+            } catch { self.watchState.status = "partial"; self.watchCoverageGap = true; self.watchState.message = "A background check could not finish. Check folder access and malware definitions, then run a scan." }
+            self.busy = false; await self.publish()
+        }
     }
 }

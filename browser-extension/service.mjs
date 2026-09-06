@@ -1,5 +1,6 @@
 import { recentActivity } from './scam-guard.mjs';
 import { currentScan } from './browser-scan.mjs';
+import { createAccess, currentAccess } from './account-access.mjs';
 // Copyright © 2026 HANS Society Foundation. GPL-3.0-only.
 import { buildReport, ID, REVIEW_AGE } from "./audit.mjs";
 export const WEB_ORIGIN = "https://app.undercoveriris.io";
@@ -25,14 +26,15 @@ export function sharingActive(value, now = Date.now()) {
   );
 }
 export function createService(browser, now = Date.now) {
+  const access=createAccess(browser,fetch,now);
   let lastOpened = 0;
   async function report() {
     const [infos, state] = await Promise.all([
       browser.management.getAll(),
-      browser.storage.local.get(["choices", "changes", "extensionWatch", "historyReview", "scamGuard", "scamActivity", "browserScan"]),
+      browser.storage.local.get(["choices", "changes", "extensionWatch", "historyReview", "scamGuard", "scamActivity", "browserScan", "scanExtensionIds", "companionAccess"]),
     ]);
     const result = buildReport(
-      infos,
+      currentAccess(state.companionAccess,now()) && state.companionAccess.monitoring && state.extensionWatch ? infos : infos.filter(x=>(state.scanExtensionIds || []).includes(x.id)),
       browser.runtime.id,
       state.choices,
       state.changes,
@@ -46,6 +48,7 @@ export function createService(browser, now = Date.now) {
     if (Array.isArray(state.scamActivity) && activity.length !== state.scamActivity.length) await browser.storage.local.set({scamActivity:activity});
     result.security = { scamGuard: state.scamGuard || {enabled:false}, activity, extensionWatch: state.extensionWatch === true, history: history && history.checkedAt > now() - 7 * 86400000 ? { checkedAt: history.checkedAt, checkedCount: history.checkedCount, matchCount: history.matchCount, partial: history.partial } : null };
     result.security.scan = currentScan(state.browserScan, now());
+    result.security.access=currentAccess(state.companionAccess,now())?state.companionAccess:null;
     return result;
   }
   async function external(message, sender) {
@@ -54,19 +57,27 @@ export function createService(browser, now = Date.now) {
       !message ||
       message.version !== 1 ||
       Object.keys(message).some(
-        (x) => !["version", "action", "focusId", "section"].includes(x),
+        (x) => !["version", "action", "focusId", "section", "ticket"].includes(x),
       )
     )
       throw Error("This connection is not allowed.");
     if (
-      !["status", "report", "openReview", "disconnect"].includes(message.action)
+      !["status", "report", "openReview", "disconnect", "linkAccount"].includes(message.action)
     )
       throw Error("Unsupported browser request.");
     const state = await browser.storage.local.get("sharing");
     if (message.action === "status")
-      return { version: 1, connected: sharingActive(state.sharing, now()), capabilities:['browserScan','reviewSections'] };
+      return { version: 1, connected: sharingActive(state.sharing, now()), accountRef:(await browser.storage.local.get('companionAccount')).companionAccount?.accountRef || null, capabilities:['browserScan','reviewSections','accountScans'] };
+    if(message.action==='linkAccount') {
+      if(!sharingActive(state.sharing,now()))throw Error('Allow the dashboard connection in your companion first.');
+      await access.claim(message.ticket);
+      const latest=await browser.storage.local.get('sharing');
+      if(!sharingActive(latest.sharing,now())||latest.sharing.expiresAt!==state.sharing.expiresAt){await access.disconnect();throw Error('Dashboard sharing changed. Connect again when ready.');}
+      return {version:1,connected:true,accountConnected:true};
+    }
     if (message.action === "disconnect") {
       await browser.storage.local.remove("sharing");
+      await access.disconnect();
       return { version: 1, connected: false };
     }
     if (message.action === "openReview") {

@@ -107,6 +107,7 @@ test("web bridge rejects other origins, frames, extensions, incognito and all mu
     opens = 0;
   const state = {
     sharing: { origin: WEB_ORIGIN, expiresAt: now + REVIEW_AGE },
+    scanExtensionIds: [id],
   };
   const browser = {
     runtime: {

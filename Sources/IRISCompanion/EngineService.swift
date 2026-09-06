@@ -64,6 +64,42 @@ final class EngineService: @unchecked Sendable {
         let _ = try runner.run(clam.appendingPathComponent("Helpers/freshclam"), ["--config-file=" + conf.path, "--stdout"], timeout: 600, environment: ["CVD_CERTS_DIR": clam.appendingPathComponent("Resources/ClamAV/etc/certs").path])
         guard (signatureDate().map { Date().timeIntervalSince($0) < 7 * 86400 } ?? false) else { throw ScanError.commandFailed("Malware definitions could not be updated. Check your connection and try again; the startup review is still available.") }
     }
+    func checkChanges(_ changed: [String]) throws -> ([Finding], [String: LocalItem], Int, Bool) {
+        guard signatureDate().map({ Date().timeIntervalSince($0) < 7 * 86400 }) == true else { throw ScanError.commandFailed("Run a scan to prepare current malware definitions before enabling monitoring.") }
+        var paths: [String] = [], partial = changed.count > 200
+        let allowed = ["Downloads/", "Desktop/", "Library/LaunchAgents/"].map { NSHomeDirectory() + "/" + $0 }
+        for path in changed.prefix(200) {
+            guard allowed.contains(where: { path.hasPrefix($0) }), !path.contains("\n"), !path.contains("\r"), !path.contains("/../") else { continue }
+            let url = URL(fileURLWithPath: path)
+            guard fm.fileExists(atPath: path) else { continue }
+            guard let v = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey]), v.isRegularFile == true, v.isSymbolicLink != true, (v.fileSize ?? Int.max) <= 100_000_000 else { partial = true; continue }
+            // Do not inspect through a symlinked parent directory.
+            guard url.resolvingSymlinksInPath().path == path else { partial = true; continue }
+            paths.append(path)
+        }
+        guard !paths.isEmpty else { return ([], [:], 0, partial) }
+        let list = root.appendingPathComponent("watch-" + UUID().uuidString + ".txt")
+        try paths.joined(separator: "\n").write(to: list, atomically: true, encoding: .utf8); defer { try? fm.removeItem(at: list) }
+        let result = try runner.run(clam.appendingPathComponent("Helpers/clamscan"), ["--cvdcertsdir=" + clam.appendingPathComponent("Resources/ClamAV/etc/certs").path, "--database=" + database.path, "--file-list=" + list.path, "--stdout", "--max-filesize=100M", "--max-scansize=200M", "--follow-file-symlinks=0", "--follow-dir-symlinks=0", "--alert-exceeds-max=yes"], timeout: 180, environment: ["CVD_CERTS_DIR": clam.appendingPathComponent("Resources/ClamAV/etc/certs").path])
+        var findings: [Finding] = [], local: [String: LocalItem] = [:], checked = 0
+        for line in String(decoding: result.data, as: UTF8.self).components(separatedBy: "\n") {
+            if line.hasSuffix(": OK") { checked += 1 }
+            guard line.hasSuffix(" FOUND"), let separator = line.range(of: ": ", options: .backwards) else { continue }
+            let path = String(line[..<separator.lowerBound]), signature = String(line[separator.upperBound...].dropLast(6))
+            guard paths.contains(path) else { continue }; checked += 1
+            if signature.contains("Heuristics.Limits.Exceeded") { partial = true; continue }
+            let heuristic = signature.hasPrefix("Heuristics.") || signature.hasPrefix("PUA.")
+            let f = Finding(path: path, title: URL(fileURLWithPath: path).lastPathComponent, category: "Malware scan", level: heuristic ? .review : .threat, explanation: "Monitoring detected a changed file that matched a local scanner signature.", evidence: ["ClamAV signature: " + signature, "Detected after a file change"], action: .quarantine, signature: signature)
+            let inspected = FindingInspector.inspect(f, item: LocalItem(path: path, sha256: try? fileSHA256(URL(fileURLWithPath: path))))
+            findings.append(inspected.0); local[f.id] = inspected.1
+        }
+        for path in paths where path.hasPrefix(NSHomeDirectory() + "/Library/LaunchAgents/") && !findings.contains(where: { $0.location == "~" + path.dropFirst(NSHomeDirectory().count) }) {
+            let f = Finding(path: path, title: URL(fileURLWithPath: path).lastPathComponent, category: "Startup change", level: .review, explanation: "A startup instruction was added or changed while monitoring was on. Confirm which app installed it before trusting this version.", evidence: ["Changed in your user LaunchAgents folder"], action: path.hasSuffix(".plist") ? .disableStartup : .quarantine)
+            let inspected = FindingInspector.inspect(f, item: LocalItem(path: path, sha256: try? fileSHA256(URL(fileURLWithPath: path))))
+            findings.append(inspected.0); local[f.id] = inspected.1
+        }
+        return (findings, local, checked, partial || result.status > 1 || checked < paths.count)
+    }
     func scan(progress: @escaping @Sendable (ScanProgress) -> Void) throws -> (ScanReport, [String: LocalItem]) {
         var coverage = Coverage(); var findings: [Finding] = []; var local: [String: LocalItem] = [:]; var inventoryPaths: [String] = []; var scanned = 0
         progress(ScanProgress("startup", step: 4, message: "Checking software that starts with your Mac…"))

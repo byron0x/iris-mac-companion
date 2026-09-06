@@ -32,3 +32,5 @@ The web repository's `tests/browser-companion.e2e.cjs` tests the real Chromium e
 The 0.2.0 ZIP, updated permissions/privacy disclosures, reviewer instructions and four current screenshots are submitted to the existing store item. Keep `store/release.json` at the actually published version until Google serves the new package. The install link and extension ID remain unchanged.
 
 Copyright © 2026 HANS Society Foundation. GPL-3.0-only. ScamSniffer provides the GPLv3 threat data; Objective-See provides the attributed Mac components. Neither independently endorses IRIS. Support: support@joinhans.io.
+
+Version 0.4 requires one account connection for official scans. Free receives one manual browser scan per UTC calendar month; Pro receives unlimited scans and opt-in extension-change / known-scam monitoring. Cleanup remains available without Pro. Pairing sends a one-time ticket to IRIS; only an account credential and monthly attempt identifier go to the plan API. Scan data remains local. The exact IRIS origin is added to connect-src; there are no additional browser permissions.

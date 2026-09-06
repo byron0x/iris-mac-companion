@@ -1,6 +1,8 @@
 import { loadDatabase, checkLink, updateBadge } from "./protection.mjs";
 import { createService, WEB_ORIGIN, sharingActive } from "./service.mjs";
 import { fingerprint, ID, REVIEW_AGE } from "./audit.mjs";
+import {createAccess,currentAccess} from './account-access.mjs';
+const accountAccess=createAccess(chrome);
 const service = createService(chrome);
 const $ = (selector) => document.querySelector(selector);
 let generation = 0;
@@ -212,6 +214,15 @@ async function refresh() {
     ]);
     if (g !== generation) return;
     const connected = sharingActive(sharing);
+    const {companionAccount:c,companionAccess:a}=await chrome.storage.local.get(['companionAccount','companionAccess']);
+    if (g !== generation) return;
+    $('#plan-status').textContent=!c?'Connect your IRIS account once to scan.':!currentAccess(a)?'Checking your account plan…':a.unlimited?'IRIS Pro · Unlimited scans + live browser protection':a?.remaining===0?'IRIS Free · Monthly scan used. Saved cleanup stays available.':'IRIS Free · One browser scan per calendar month';
+    $('#plan-link').textContent=c?'Explore Pro ↗':'Connect account ↗';
+    $('#plan-link').href=c?WEB_ORIGIN+'/upgrade':WEB_ORIGIN+'/device?companion=browser#browser-companion';
+    $('#plan-link').onclick=c?null:event=>{event.preventDefault();$('#connect').click();};
+    const paid = currentAccess(a) && a.monitoring;
+    $("#scam-guard").disabled = !paid && scamGuard?.enabled !== true;
+    $("#watch").disabled = !paid && extensionWatch !== true;
     $("#scam-guard").checked = scamGuard?.enabled === true;
     $("#scam-guard-status").textContent = scamGuard?.enabled ? `Protection on · ${scamGuard.source?.domains?.toLocaleString() || 'Known'} hostnames${scamGuard.source?.fetchedAt ? ' · Updated '+new Date(scamGuard.source.fetchedAt).toLocaleString() : ' · Packaged snapshot'}${scamGuard.updateError ? ' · '+scamGuard.updateError : ''}` : 'Protection is off. Enable it to block known scam sites.';
     const events = report.security.activity; $("#scam-activity").replaceChildren();
@@ -281,7 +292,7 @@ $("#connect").addEventListener("click", async () => {
       await chrome.storage.local.set({
         sharing: { origin: WEB_ORIGIN, expiresAt: Date.now() + REVIEW_AGE },
       });
-    await chrome.tabs.create({ url: WEB_ORIGIN + "/device#browser-companion" });
+    await chrome.tabs.create({ url: WEB_ORIGIN + "/device?companion=browser#browser-companion" });
     await refresh();
   } catch {
     message(
@@ -292,6 +303,7 @@ $("#connect").addEventListener("click", async () => {
 $("#disconnect").addEventListener("click", async () => {
   try {
     await chrome.storage.local.remove("sharing");
+    await accountAccess.disconnect();
     message(
       "Disconnected from the IRIS website. Your local review remains available.",
     );
@@ -324,8 +336,9 @@ window.addEventListener("focus", () => void refresh());
 void refresh();
 
 $("#watch").addEventListener("change", async event => {
-  try { await chrome.storage.local.set({ extensionWatch: event.target.checked }); }
-  catch { message("IRIS could not save monitoring preferences. Please try again."); }
+  try { const result=await chrome.runtime.sendMessage({action:'setExtensionWatch',enabled:event.target.checked}); if(!result?.ok)throw Error(result?.error || 'Monitoring could not be changed.'); }
+  catch(e) { message(e.message); }
+  finally { await refresh(); }
 });
 let checkingHistory = false;
 $("#link-form").addEventListener("submit", async event => {
@@ -355,14 +368,16 @@ function renderHistory(value) {
 async function scanBrowser() {
   if (checkingHistory) return; checkingHistory = true; $("#history-check").disabled = true; $("#scan-browser").disabled = true;
   try {
+    const {companionAccount}=await chrome.storage.local.get('companionAccount');
+    if(!companionAccount){$('#connect').click();message('Connect your account in the dashboard, then start your scan here.');return;}
     // Request from this user gesture, never from the website or background worker.
     await chrome.permissions.request({ permissions: ["history"] });
     message('Scanning locally. You can leave this page open while IRIS prepares your results.');
     const response = await chrome.runtime.sendMessage({action:'scanBrowser'});
-    if (!response?.ok) throw Error('Scan interrupted');
+    if (!response?.ok) throw Error(response?.error || 'Scan interrupted');
     await refresh();
     message('Your results are ready below. A flagged website visit is not proof of infection.');
-  } catch { message("The browser scan could not finish. No browsing entries or extensions were changed."); }
+  } catch(e) { message(e.message || "The browser scan could not finish. No browsing entries or extensions were changed."); }
   finally { checkingHistory = false; $("#history-check").disabled = false; await refresh(); }
 }
 $("#scan-browser").addEventListener('click', scanBrowser);

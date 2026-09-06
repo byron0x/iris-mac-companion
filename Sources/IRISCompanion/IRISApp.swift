@@ -68,7 +68,8 @@ struct GuardianView: View {
     @ObservedObject var updater: CompanionUpdater
     @State private var section = "Review"
     @State private var expandedFindings: [String: Bool] = [:]
-    private let violet = Color(red: 0.76, green: 0.64, blue: 1)
+    private let violet = Color(red: 0.78, green: 0.61, blue: 1)
+    private let mint = Color(red: 0.59, green: 1, blue: 0.76)
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 24) {
@@ -110,6 +111,7 @@ struct GuardianView: View {
             Text("LESS EXPOSED. MORE IN CONTROL.").font(.caption).tracking(2).foregroundStyle(violet)
             Text(model.report == nil ? "Let's check your Mac." : "Your next step, made clear.").font(.system(size: 34, weight: .semibold, design: .rounded))
             Text(model.message).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            accessCard
             if model.keychainLocked {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Your saved IRIS review is locked").font(.headline)
@@ -128,13 +130,14 @@ struct GuardianView: View {
                 Spacer()
             }
             if let progress = model.progress { scanProgress(progress) }
+            monitoringCard
             if !model.busy && (model.report?.coverage.inventory == "needsPermission" || model.report == nil || model.report?.coverage.inventory == "incomplete") { permissionSteps }
             if let report = model.report {
                 scanCoverage(report)
                 HStack(spacing: 14) {
                     metric("Threat matches", model.unresolved.filter { $0.level == .threat }.count, .orange)
                     metric("To review", model.unresolved.filter { $0.level == .review }.count, violet)
-                    metric("Quarantined", report.findings.filter { $0.resolved }.count, .secondary)
+                    metric("Quarantined", model.receipts.count, .secondary)
                 }
                 let attention = model.unresolved.filter { $0.level != .information }
                 if attention.isEmpty {
@@ -177,6 +180,28 @@ struct GuardianView: View {
             Text("You can leave this window open. Results will appear here and in your connected dashboard.").font(.caption).foregroundStyle(.secondary)
         }.padding(20).background(violet.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
     }
+    var accessCard: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "person.crop.circle.badge.checkmark").foregroundStyle(mint)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(model.access?.unlimited == true ? "IRIS Pro · Unlimited scans" : "IRIS Free · One Mac scan per month").font(.headline)
+                Text(!model.connected ? "Connect once with Google or a wallet to start. Your files stay local." : model.access?.unlimited == true ? "Your account includes background monitoring and no IRIS revoke fees." : model.access?.remaining == 0 ? "Monthly scan used. Incomplete scans can be retried within 24 hours. Cleanup stays available." : "Your account allowance is checked when you start a scan.").font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            if !model.connected { Button("Connect account ↗") { model.openWeb() } }
+            else if model.access?.unlimited != true { Link("Get Pro ↗", destination: URL(string: "https://app.undercoveriris.io/upgrade")!) }
+        }.padding(16).background(violet.opacity(0.09), in: RoundedRectangle(cornerRadius: 14))
+    }
+    var monitoringCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack { Label("Keep watch with IRIS Pro", systemImage: "waveform.path.ecg").font(.headline); Spacer(); Toggle("Monitor changes", isOn: Binding(get: { model.watchState.enabled }, set: model.setMonitoring)).labelsHidden().accessibilityLabel("Monitor downloads and startup changes") }
+            Text(model.watchState.message).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if let checked = model.watchState.checkedAt {
+                Text("\(model.watchState.filesChecked) changed files checked · \(model.watchState.matches) threat matches · Last check \(Date(timeIntervalSince1970: checked / 1000).formatted(date: .omitted, time: .shortened))").font(.caption).foregroundStyle(mint)
+            }
+            Text("Keep IRIS open in the menu bar. Monitoring needs current malware definitions and a connected Pro account; it does not inspect every folder or block a file from running.").font(.caption).foregroundStyle(.secondary)
+        }.padding(18).background(mint.opacity(0.045), in: RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(mint.opacity(0.2)))
+    }
     var permissionSteps: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label("Unlock the startup check", systemImage: "lock.open").font(.title2).bold()
@@ -217,7 +242,7 @@ struct GuardianView: View {
     }
     func checkRow(_ name: String, status: String) -> some View {
         HStack {
-            Image(systemName: ScanAssessment.checked(status) ? "checkmark.circle.fill" : "exclamationmark.circle").foregroundStyle(ScanAssessment.checked(status) ? violet : .orange)
+            Image(systemName: ScanAssessment.checked(status) ? "checkmark.circle.fill" : "exclamationmark.circle").foregroundStyle(ScanAssessment.checked(status) ? mint : .orange)
             Text(name); Spacer()
             Text(status == "needsPermission" ? "Needs Full Disk Access" : coverageLabel(status)).font(.caption).foregroundStyle(.secondary)
         }
@@ -243,11 +268,21 @@ struct GuardianView: View {
         DisclosureGroup(isExpanded: Binding(get: { expandedFindings[finding.id] ?? (finding.level != .information) }, set: { expandedFindings[finding.id] = $0 })) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(finding.explanation).fixedSize(horizontal: false, vertical: true)
+                if let assessment = finding.assessment {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label(assessment.verdict, systemImage: finding.level == .threat ? "exclamationmark.shield.fill" : "info.circle.fill").font(.headline).foregroundStyle(assessment.verdict == "Investigate before trusting" || finding.level == .threat ? .orange : mint)
+                        Text(assessment.summary).font(.callout).fixedSize(horizontal: false, vertical: true)
+                        ForEach(assessment.signals, id: \.self) { Text("• " + $0).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                        Text("Your next step").font(.subheadline).bold()
+                        Text(assessment.nextStep).font(.callout).fixedSize(horizontal: false, vertical: true)
+                    }.padding(14).background(violet.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                }
                 if finding.canTrust == true {
                     Button { model.trust(finding) } label: { Label("I trust this item", systemImage: "checkmark.seal") }.disabled(model.busy)
                     Text("Remember this version. Changes bring it back for review.").font(.caption).foregroundStyle(.secondary)
                 }
                 Button(finding.action == .quarantine ? "Quarantine file" : finding.action == .disableStartup ? "Disable startup item" : finding.action == .settings ? "Review keyboard access" : "Show in Finder") { model.act(finding) }.disabled(model.busy)
+                if finding.action != .reveal { Button("Show file location") { model.reveal(finding) }.disabled(model.busy) }
                 DisclosureGroup("Why this appeared") {
                     ForEach(finding.evidence, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
                     Text(finding.location).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
@@ -273,16 +308,21 @@ struct GuardianView: View {
     var quarantine: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Quarantine").font(.largeTitle)
-            Text("Files here cannot run from their original location. They stay on your Mac so you can undo a change.").foregroundStyle(.secondary)
+            Text("Files here have been moved away from their original location and their execute permission removed. Already-running processes are not necessarily stopped. Restore a trusted file, or permanently delete a file you no longer want.").foregroundStyle(.secondary)
             if model.receipts.isEmpty { Label("No quarantined files", systemImage: "checkmark.shield").padding(.vertical, 30) }
-            ForEach(model.receipts) { receipt in HStack { VStack(alignment: .leading) { Text(URL(fileURLWithPath: receipt.originalPath).lastPathComponent); Text(receipt.date, style: .date).font(.caption).foregroundStyle(.secondary) }; Spacer(); Button("Restore…") { model.restore(receipt) }.disabled(model.busy) }.padding().background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 12)) }
+            ForEach(model.receipts) { receipt in VStack(alignment: .leading, spacing: 12) {
+                Label(URL(fileURLWithPath: receipt.originalPath).lastPathComponent, systemImage: "archivebox.fill").font(.headline).foregroundStyle(mint)
+                Text(receipt.originalPath.replacingOccurrences(of: NSHomeDirectory(), with: "~")).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                Text(receipt.date, style: .date).font(.caption).foregroundStyle(.secondary)
+                HStack { Button("Restore…") { model.restore(receipt) }.disabled(model.busy); Button("Delete permanently…", role: .destructive) { model.deleteQuarantined(receipt) }.disabled(model.busy) }
+            }.padding().frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 12)) }
         }
     }
     var about: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Built to be on your side.").font(.largeTitle)
             CompanionUpdateSettings(updater: updater)
-            Text("IRIS Mac Companion is free, open-source software from HANS Society Foundation, licensed under GPLv3. Scanning happens locally. The web dashboard receives an encrypted report only after you connect it.")
+            Text("IRIS Mac Companion is open-source software from HANS Society Foundation, licensed under GPLv3. Official IRIS accounts include one monthly Mac scan on Free, or unlimited scans and change monitoring on Pro. Scanning happens locally. Your connected web dashboard receives an encrypted report.")
             Link("Startup scanning: KnockKnock by Objective-See Foundation ↗", destination: URL(string: "https://objective-see.org/products/knockknock.html")!)
             Link("Keyboard privacy: adapted from ReiKey by Objective-See Foundation ↗", destination: URL(string: "https://objective-see.org/products/reikey.html")!)
             Link("Known-threat scanning: ClamAV by Cisco Talos ↗", destination: URL(string: "https://www.clamav.net/")!)

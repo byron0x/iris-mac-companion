@@ -1,6 +1,6 @@
 # IRIS Mac Companion
 
-A free, open-source Mac companion for IRIS by HANS Society Foundation. It helps people understand startup software and active keyboard listeners, check common download locations against malware signatures and perform supported, reversible cleanup. Dark purple SwiftUI interface; macOS 13+; Apple silicon and Intel.
+An open-source Mac companion for IRIS by HANS Society Foundation. It helps people understand startup software and active keyboard listeners, check common download locations against malware signatures and perform supported, reversible cleanup. Dark purple SwiftUI interface; macOS 13+; Apple silicon and Intel.
 
 **Mac releases:** use the latest verified download linked from the [IRIS dashboard](https://app.undercoveriris.io/device). Unzip it, move IRIS Mac Companion into Applications, and open it. Version 0.3.1 adds signed in-app updates; older installed versions need this one manual replacement.
 
@@ -74,3 +74,11 @@ The companion checks for app updates daily by default. **IRIS Mac Companion → 
 The update key is stored in the build machine's Keychain under Sparkle account `iris-mac-updates`. Keep that key and the Apple Developer ID private key available for future releases; never put either in Git. Only the public Ed25519 key is in Info.plist. After notarization, generate the feed with `scripts/publish-appcast.sh`, verify the draft release on fresh Intel and Apple silicon machines, publish the exact ZIP and corresponding sources, then commit/push `updates/appcast.xml`. Do not edit signed XML by hand.
 
 The release ZIP excludes build-machine extended attributes and AppleDouble sidecars. Version 0.3.0 exposed a packaging bug: Archive Utility could materialize metadata next to framework symlinks, invalidating the resource seal. `verify-archive.py` rejects these archives before upload, and CI verifies both `ditto` and ordinary ZIP extraction. Also test a browser-downloaded copy through Archive Utility with quarantine preserved; command-line extraction alone missed the original issue.
+
+## Companion plans (0.4.0)
+
+Official scans use the connected IRIS account: Free includes one manual scan per companion per UTC calendar month; Pro includes unlimited scans and opt-in monitoring. A failed/incomplete scan can retry the same reservation within 24 hours. Review, supported quarantine, restoration, deletion from quarantine and updates do not require Pro. Source remains GPLv3; this governs official service access, not an unmodifiable client.
+
+Pro Mac monitoring uses FSEvents in Downloads, Desktop and the user LaunchAgents folder. It checks changed regular files locally against current ClamAV signatures, with 200-file and 100 MB limits. It does not block execution. Missed events, access failures and scan limits remain visible. Account access refreshes about every three minutes, with a five-minute validity window. No always-on keyboard monitoring or full-filesystem claims.
+
+Finding assessments validate signing identities and inspect exact supported shell setup files for a small set of suspicious command patterns. They never upload script text or invent risk scores. Common filenames are explained, not automatically trusted. Exact home shell files can be quarantined after confirmation. Permanent deletion is allowed only from the private quarantine after another explicit confirmation; restore preserves other scan results.

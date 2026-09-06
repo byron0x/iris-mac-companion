@@ -16,6 +16,8 @@ public struct Finding: Codable, Identifiable, Sendable, Equatable {
     public var signature: String?
     public var trusted: Bool?
     public var canTrust: Bool?
+    public var assessment: FindingAssessment?
+    public var cleanupStatus: String?
     public init(path: String, title: String, category: String, level: FindingLevel, explanation: String, evidence: [String], action: FindingAction, home: String = NSHomeDirectory(), signature: String? = nil) {
         self.id = SHA256.hash(data: Data((category + "\u{0}" + path).utf8)).map { String(format: "%02x", $0) }.joined()
         self.title = title; self.category = category; self.level = level; self.explanation = explanation; self.evidence = evidence

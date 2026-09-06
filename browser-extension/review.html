@@ -40,6 +40,7 @@
       <div id="message" role="status" aria-live="polite" hidden></div>
 
       <section class="protection-panel scan-panel" aria-label="Browser scan">
+        <div class="plan-banner"><strong id="plan-status">Checking your IRIS plan…</strong><a id="plan-link" href="https://app.undercoveriris.io/device?companion=browser#browser-companion" target="_blank" rel="noopener noreferrer">Connect account ↗</a></div>
         <button id="scan-browser" class="primary scan-cta">Scan my browser</button>
         <p id="scan-status" role="status" aria-live="polite"></p>
         <progress id="review-progress" max="3" value="0" aria-label="Browser scan progress"></progress>
@@ -69,7 +70,7 @@
         <div id="findings"></div>
       </section>
       <section class="protection-panel" aria-label="Crypto phishing checks" id="protection">
-        <h2>Protection between scans</h2>
+        <h2>IRIS Pro · Protection between scans</h2>
         <label class="watch-toggle"><input type="checkbox" id="watch" /> Watch for extension changes</label>
         <p class="muted">IRIS adds a badge when extensions need review, including new versions or changed permissions.</p>
         <label class="watch-toggle"><input type="checkbox" id="scam-guard" /> Block known crypto-scam sites</label>
