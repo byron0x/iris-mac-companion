@@ -1,27 +1,25 @@
 {
-  "version": "0.1.0",
+  "version": "0.4.0",
   "extensionId": "aeamoplfjgalmokafhkcapgpbofinmfg",
   "status": "published",
-  "submittedOn": "2026-09-05",
-  "automaticPublication": false,
-  "sha256": "becf38bffaaf86edc5ed32f38643ad6b56ba27ba17bf6bf8d2ec2d88c8df62d7",
+  "submittedOn": "2026-09-06",
+  "automaticPublication": true,
+  "sha256": "c21b8896ac58d3221a362742a445069cc5cf4e3700985787fd955efd1e2504a1",
   "publicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAphSeddxi7tVJiSlESwrZFp+FkK5UwAxpC9OTLzhqP1YmwXql+atmwatG2dgeFmk4/DIWnMqU6yQzGKSBWwtRQSncP0k2W5OhcUMJf5rWMxmg1cKc80Ko58MdINDIHC++p5pIDPojtL9Ut79HWNA9/6qy60TtaOZIHgkWgyLxAYn1K13cwCOH5LiZcZWorBn9jiNq4eOwj/gX3+J0++QVOdZjyM3yLhjSiDhYPpSOV/xTtO2FtMh/Ua4JdhiToBEkydGrM4wwhKte1kocmPbdIwLKHXoKsyWhtaKvu8tz1xplczYqMu5G5YHO6cex7kO6IZ7bH9FK1oh7mG1ycq1CXQIDAQAB",
-  "publishedOn": "2026-09-06",
+  "publishedOn": "2026-09-07",
   "storeUrl": "https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg",
   "pendingUpdate": {
-    "version": "0.4.0",
+    "version": "0.4.1",
     "status": "submitted-for-review",
-    "submittedOn": "2026-09-06",
+    "submittedOn": "2026-09-07",
     "automaticPublication": true,
-    "sha256": "c21b8896ac58d3221a362742a445069cc5cf4e3700985787fd955efd1e2504a1",
-    "sourceCommit": "05a307730c667e232d9e77cc00313cfd95970a1a",
-    "replacesPendingVersion": "0.3.0",
+    "sha256": "4457d2437d9951937be212ad2046820ac4cc27d8b279d83055250c2bc52c5fd3",
+    "sourceCommit": "d6e4578",
     "features": [
-      "account-connected monthly Free scans and unlimited Pro scans",
-      "Pro opt-in scam and extension-change monitoring",
-      "saved cleanup and local link checks on both plans",
-      "purple and mint guardian design",
-      "updated plan and privacy disclosures"
+      "Private scan completion receipts for optional IRIS UBAI bounties",
+      "Offline receipt retry without sending browsing history or findings",
+      "No new browser permissions"
     ]
-  }
+  },
+  "sourceCommit": "05a307730c667e232d9e77cc00313cfd95970a1a"
 }

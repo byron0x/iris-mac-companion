@@ -1,6 +1,6 @@
 # IRIS — Your browser guardian companion
 
-Manifest V3 companion for Chrome, Brave and Edge. Version 0.1.0 is published at https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg. Version 0.2.0 was submitted for Chrome Web Store review on September 6, 2026, with automatic publication after approval. The new features below reach installed users after that approval and update.
+Manifest V3 companion for Chrome, Brave and Edge. Version 0.4.0 is published at https://chromewebstore.google.com/detail/aeamoplfjgalmokafhkcapgpbofinmfg. Version 0.4.1 was submitted for Chrome Web Store review on September 7, 2026, with automatic publication after approval. Version 0.4.0 includes combined scans, account plans and Pro monitoring; 0.4.1 adds the reward receipt described below.
 
 ## Browser security in one place
 
@@ -29,7 +29,7 @@ python3 browser-extension/package.py
 
 The web repository's `tests/browser-companion.e2e.cjs` tests the real Chromium extension and a harmless fixture, with production traffic blocked. Release checks also exercise optional history in an isolated profile and verify the complete phishing block → warning → activity → opt-out flow against a local HTTP server. Never use a developer's browsing history or visit live scam sites for tests.
 
-The 0.2.0 ZIP, updated permissions/privacy disclosures, reviewer instructions and four current screenshots are submitted to the existing store item. Keep `store/release.json` at the actually published version until Google serves the new package. The install link and extension ID remain unchanged.
+The 0.4.1 ZIP and updated privacy disclosure are submitted to the existing store item. Keep `store/release.json` at the actually published version until Google serves the new package. The install link and extension ID remain unchanged.
 
 Copyright © 2026 HANS Society Foundation. GPL-3.0-only. ScamSniffer provides the GPLv3 threat data; Objective-See provides the attributed Mac components. Neither independently endorses IRIS. Support: support@joinhans.io.
 

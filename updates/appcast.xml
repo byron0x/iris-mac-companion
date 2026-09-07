@@ -6,6 +6,21 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>IRIS Mac Companion</title>
         <item>
+            <title>0.4.2</title>
+            <pubDate>Mon, 07 Sep 2026 09:00:51 -0300</pubDate>
+            <link>https://app.undercoveriris.io/device</link>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>0.4.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="plain-text"><![CDATA[Earn UBAI with IRIS
+
+Your connected Mac can now record completed scans for IRIS bounties. If you are offline when a scan finishes, the companion retries the completion receipt when it reconnects. Reports and files stay private; only the completed milestone is shared.
+
+Open app.undercoveriris.io/earn to see and claim your eligible rewards.
+]]></description>
+            <enclosure url="https://github.com/byron0x/iris-mac-companion/releases/download/v0.4.2/IRIS-Mac-0.4.2.zip" length="36762484" type="application/octet-stream" sparkle:edSignature="h0uuTqhK4EXeclOMQOtsVygDjMLAyRi2yki62d8wTWbT16OkTZomKCK19S3jtT9R6KKafiwLLTBwakHYhNo1DA=="/>
+        </item>
+        <item>
             <title>0.4.1</title>
             <pubDate>Sun, 06 Sep 2026 18:31:53 -0300</pubDate>
             <link>https://app.undercoveriris.io/device</link>
@@ -44,26 +59,9 @@ More clarity. More control.
 ]]></description>
             <enclosure url="https://github.com/byron0x/iris-mac-companion/releases/download/v0.4.0/IRIS-Mac-0.4.0.zip" length="36750754" type="application/octet-stream" sparkle:edSignature="1spH++KBchw9QKeIesgzm5uLSJqlRHgdSx09M0TVSt8TQB2SaQrWLjQsRQQfxJ4xiuLint5/OXwn9V15Z0CABQ=="/>
         </item>
-        <item>
-            <title>0.3.1</title>
-            <pubDate>Sun, 06 Sep 2026 13:57:43 -0300</pubDate>
-            <link>https://app.undercoveriris.io/device</link>
-            <sparkle:version>4</sparkle:version>
-            <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <description sparkle:format="plain-text"><![CDATA[A smoother start and easier updates.
-
-• Fixes a ZIP packaging issue that could show a “damaged app” warning after unpacking the download.
-• Adds Check for Updates to the IRIS menu, menu-bar companion and About page.
-• Checks for signed updates automatically, with an optional automatic-download setting.
-• Verifies updates before unpacking them and waits for an active scan to finish before restarting.
-• Keeps your saved review, trusted items and dashboard connection.
-]]></description>
-            <enclosure url="https://github.com/byron0x/iris-mac-companion/releases/download/v0.3.1/IRIS-Mac-0.3.1.zip" length="36586515" type="application/octet-stream" sparkle:edSignature="yRLYCRkHjtDy+YFGejwbHWrLZr7fhNynpV5VTqI2dG44G7P8K1j5uB2KS4iBMrPG+5GpfrmhU1Nvjt7cm/43DA=="/>
-        </item>
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: R/vAghBaSZ8rIIhNZ+s6D4G3dSR7sIceb8mdIvJYfQdlh2YT6eciqRr9yakpZKWbgnAsZTFDM8I/Bv5+dogGBg==
-length: 4618
+edSignature: hq6aJFzubhv6OPvF4f8MGYBxlnAVqb4QkTFdP0G5iWax0Ywk30hGF+3jy3P1Aq5s6SXwIUd1ed0BT/7CL7FqDQ==
+length: 4475
 -->

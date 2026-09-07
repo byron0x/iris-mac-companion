@@ -1,0 +1,32 @@
+{
+  "version": "0.4.2",
+  "build": "7",
+  "status": "published",
+  "publishedOn": "2026-09-07",
+  "url": "https://github.com/byron0x/iris-mac-companion/releases/tag/v0.4.2",
+  "downloadUrl": "https://github.com/byron0x/iris-mac-companion/releases/download/v0.4.2/IRIS-Mac-0.4.2.zip",
+  "sha256": "b20d9b4b2db1e0dc19b2f6aa0056e95e0adc539d24924a8375b80cd06a02aa16",
+  "nativeBuildCommit": "d6e457873902897cb138bcfeb53a27c1bdddf3c5",
+  "notarizationId": "e88041af-6c94-41dd-8927-e7021186fedf",
+  "notarizationStatus": "Accepted",
+  "verificationRun": "https://github.com/byron0x/iris-mac-companion/actions/runs/34119465668",
+  "verificationPlatforms": [
+    "macos-15",
+    "macos-15-intel"
+  ],
+  "archiveVerification": [
+    "AppleDouble metadata rejection",
+    "ditto extraction",
+    "ordinary unzip extraction",
+    "Developer ID and Gatekeeper",
+    "stapled notarization",
+    "universal binaries",
+    "ClamAV and native review fixtures"
+  ],
+  "updater": {
+    "framework": "Sparkle 2.9.6",
+    "feed": "https://raw.githubusercontent.com/byron0x/iris-mac-companion/main/updates/appcast.xml",
+    "signedFeed": true,
+    "signedArchive": true
+  }
+}
