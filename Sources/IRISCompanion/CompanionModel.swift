@@ -146,6 +146,7 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                 try Task.checkCancellation()
                 let requestID = UserDefaults.standard.string(forKey: "scanRequestID") ?? UUID().uuidString.lowercased()
                 UserDefaults.standard.set(requestID, forKey: "scanRequestID")
+                let scanConnectionID = connection?.id
                 try await refreshAccess(action: "reserve", runId: requestID)
                 progress = ScanProgress("keyboard", step: 2, message: "Checking keyboard access…"); message = progress!.message; await publish()
                 let keyboard = await Task.detached { KeyboardScanner.check() }.value
@@ -161,6 +162,11 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
                 try Task.checkCancellation()
                 report = enriched.0; report?.coverage.safeguards = safeguards; localItems = enriched.1; applyTrust(); saveScan()
                 message = ScanAssessment.summary(report!)
+                // Retry this small completion receipt after offline scans; no findings leave the Mac.
+                if let scanConnectionID, connection?.id == scanConnectionID {
+                    UserDefaults.standard.set(["id": scanConnectionID, "runId": requestID], forKey: "pendingEarnCompletion")
+                    await syncEarnCompletion()
+                }
                 if report?.coverage.malware == "complete" && report?.coverage.inventory == "available locations checked" { watchCoverageGap = false; UserDefaults.standard.removeObject(forKey: "scanRequestID") }
             } catch is CancellationError { message = "Scan stopped before it finished. Any previous results below are unchanged." }
             catch { problem = error.localizedDescription; message = "Scan could not finish. Any previous results below are unchanged." }
@@ -231,12 +237,12 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
     }
     func disconnect() {
         let old = connection; connection = nil; connected = false; Keychain.remove("connection")
-        access = nil; syncWatcher()
+        access = nil; UserDefaults.standard.removeObject(forKey: "scanRequestID"); UserDefaults.standard.removeObject(forKey: "pendingEarnCompletion"); syncWatcher()
         if let old { Task { let _: EmptyResponse? = try? await request(["action": "disconnect", "id": old.id], token: old.token) } }
     }
     struct EmptyResponse: Decodable {}
     func request<T: Decodable>(_ payload: [String: Any], token: String?, planCheck: Bool = false) async throws -> T {
-        var req = URLRequest(url: planCheck ? URL(string: "https://app.undercoveriris.io/api/companion-access")! : endpoint); req.httpMethod = "POST"; req.timeoutInterval = 20
+        var req = URLRequest(url: planCheck ? URL(string: "https://app.undercoveriris.io/api/companion-access")! : endpoint); req.httpMethod = "POST"; req.timeoutInterval = payload["action"] as? String == "complete" ? 5 : 20
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token { req.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
         req.httpBody = try JSONSerialization.data(withJSONObject: payload)
@@ -379,6 +385,14 @@ struct ClaimResponse: Decodable { let id: String; let token: String; let expires
         let value: CompanionAccess = try await request(payload, token: c.token, planCheck: true)
         guard connection?.id == c.id, value.current else { throw ScanError.invalidEnvelope }
         access = value; lastAccessCheck = Date(); syncWatcher()
+        if action == "status" { await syncEarnCompletion() }
+    }
+    private func syncEarnCompletion() async {
+        guard let c = connection, let pending = UserDefaults.standard.dictionary(forKey: "pendingEarnCompletion") as? [String: String], pending["id"] == c.id, let runId = pending["runId"] else { return }
+        do {
+            let _: CompanionAccess = try await request(["action":"complete","kind":"mac","id":c.id,"runId":runId], token:c.token, planCheck:true)
+            if connection?.id == c.id, UserDefaults.standard.dictionary(forKey: "pendingEarnCompletion")?["runId"] as? String == runId { UserDefaults.standard.removeObject(forKey: "pendingEarnCompletion") }
+        } catch { /* The next account refresh retries; saved scan results remain available. */ }
     }
     func setMonitoring(_ enabled: Bool) {
         watchState.enabled = enabled; UserDefaults.standard.set(enabled, forKey: "proMonitoring")

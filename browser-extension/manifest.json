@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "IRIS \u2014 Your browser guardian companion",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Review extension access, watch for changes, and check links or recent browsing for known crypto-phishing domains locally.",
   "minimum_chrome_version": "120",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwmFPRWcTPGweeWoa73H66bNhYN5OAMikWr8ik9upGaKjGB1P07q6O/deHXgF/l0d3CQx8QidI46qx9s3sppb5FYCxDx6+XyhEMtidcPYHlnZCJoqrVxP7cQhwWaJlwqb99kRnuH+vB5ic95TyAjGCYCyL8s51WBrTn7U2IoHvSYEJrJegAPkT2uQtlBo5yld9TY9znTDRJrB0WoFD2xFApiG+wXlBU5IjRtkv9LYewagVlDoY+7cAwRqzjbnuSEezxtYPws8uVlJ34QPGtk26jf5HZaTdwI8AfLvLtbhkhf0G+VtXCf41ukdcDWIJ8hc5v584Wf4ueU/suuJRiN4FwIDAQAB",

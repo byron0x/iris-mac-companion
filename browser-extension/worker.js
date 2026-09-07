@@ -77,7 +77,7 @@ async function checkOpenTabs() {
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(sender.id!==chrome.runtime.id || sender.url?.split('#')[0]!==chrome.runtime.getURL('review.html'))return;
   if(message?.action==='scanBrowser' || message?.action==='clearBrowserScan') {
-    (message.action==='scanBrowser' ? accountAccess.reserve().then(()=>scanner.start()).then(async result=>{if(result.status==='complete')await chrome.storage.local.remove('scanRequestID');return result;}) : scanner.clear()).then(()=>reply({ok:true}),e=>reply({error:e.message || 'The browser check could not finish.'}));return true;
+    (message.action==='scanBrowser' ? accountAccess.reserve().then(()=>scanner.start()).then(async result=>{if(result.status==='complete')await accountAccess.complete().catch(()=>{});return result;}) : scanner.clear()).then(()=>reply({ok:true}),e=>reply({error:e.message || 'The browser check could not finish.'}));return true;
   }
   if(message?.action==='setExtensionWatch' && typeof message.enabled==='boolean') {
     (async()=>{if(message.enabled&&!((await accountAccess.status(true)).monitoring))throw Error('Extension monitoring is included with IRIS Pro.');await chrome.storage.local.set({extensionWatch:message.enabled});return {ok:true};})().then(reply,e=>reply({error:e.message}));return true;

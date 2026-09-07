@@ -24,3 +24,11 @@ test('downgrades, plan outages and account switches never reuse indefinite Pro a
  const switched=createAccess(browser,async()=>{delete state.companionAccount;return {ok:true,json:async()=>status}},()=>now);
  await assert.rejects(switched.status(true),/connection changed/);
 });
+test('offline completion is saved and retried without scanning again or exposing report contents',async()=>{
+ const {state,browser}=fixture();let offline=true;const calls=[];
+ const access=createAccess(browser,async(_url,options)=>{const body=JSON.parse(options.body);calls.push(body);if(body.action==='complete'&&offline)throw Error('offline');return {ok:true,json:async()=>status};},()=>now);
+ await access.reserve();const runId=state.scanRequestID;
+ await assert.rejects(access.complete(),/offline/);assert.equal(state.scanRequestID,undefined);assert.equal(state.pendingEarnCompletion.runId,runId);
+ offline=false;await access.status(true);assert.equal(state.pendingEarnCompletion,undefined);
+ const completed=calls.filter(c=>c.action==='complete');assert.equal(completed.length,2);assert.deepEqual(completed[0],completed[1]);assert.deepEqual(Object.keys(completed[0]).sort(),['action','id','kind','runId']);
+});

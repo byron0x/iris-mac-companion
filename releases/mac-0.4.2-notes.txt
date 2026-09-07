@@ -1,0 +1,5 @@
+Earn UBAI with IRIS
+
+Your connected Mac can now record completed scans for IRIS bounties. If you are offline when a scan finishes, the companion retries the completion receipt when it reconnects. Reports and files stay private; only the completed milestone is shared.
+
+Open app.undercoveriris.io/earn to see and claim your eligible rewards.
